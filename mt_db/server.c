@@ -25,6 +25,9 @@ typedef struct Client {
 /* The number of client threads. */
 int num_client_threads = 0;
 
+/* Condition variable used for the STOP and GO functionality */
+int stopped = 0; // program is initially not in the stopped mode (its in GO mode)
+
 void *client_run(void *);
 int handle_command(char *, char *, int len);
 void *my_create_client_method(void *arg);
@@ -75,10 +78,14 @@ void *client_run(void *arg)
 
 int handle_command(char *command, char *response, int len)
 {
-	if (command[0] == EOF) {
-		strncpy(response, "all done", len - 1);
-		return 0;
-	}
+   while (stopped == 1) {
+       // The mutex for waiting
+   }
+    
+    if (command[0] == EOF) {
+        strncpy(response, "all done", len - 1);
+        return 0;
+    }
 
 	interpret_command(command, response, len);
 
@@ -99,32 +106,35 @@ void *my_create_client_method(void *arg)
 
 int main(int argc, char *argv[])
 {
-    printf("my new version\n");
     client_t* client_threads[100]; // Array of pointers to client threads
     int num_threads = 0;
     
-    char command[20]; // shouldn't be more than 20 characters
-
+    char command[20]; // shouldn't be more than 1 character
+    
     int flag = 1; // true
     
     while (flag == 1){
         fgets (command, 20, stdin); // This isn't a "bulletproof" way of receiving input. Maybe we improve it later.
-        if (command[0] == 'e'){
-
+        
+        if (command[0] == 'e') {
             client_t client_thread;
             pthread_t temp_thread = client_thread.thread; 
             client_t *c = &client_thread;
-            
+                
             // Creates a new thread which handles the creation the client thread.
             // We devote this new thread to creating the client thread so that the
             // rest of the program can continue to be available for additional thread-
             // creation calls.  
             if(pthread_create(&temp_thread, NULL, my_create_client_method, &c)) {
-                fprintf(stderr, "Error creating thread\n");
-                return 1;
+               fprintf(stderr, "Error creating thread\n");
+               return 1;
             }
-            
+        } else if (command[0] == 's') {
+            stopped = 1; // STOP
+        } else if (command[0] == 'g') {
+            stopped = 0; // GO
         }
+
         if (argc != 1) {
             fprintf(stderr, "Usage: server\n");
             exit(1);
