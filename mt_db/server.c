@@ -26,7 +26,7 @@ typedef struct Client {
 int num_client_threads = 0;
 
 /* Condition variable used for the STOP and GO functionality */
-int stopped = 0; // program is initially not in the stopped mode (its in GO mode)
+int stopped = 0; // The program is initially not in the stopped mode (it's in GO mode)
 
 void *client_run(void *);
 int handle_command(char *, char *, int len);
@@ -51,7 +51,6 @@ client_t *client_create(int ID)
 
 void client_destroy(client_t *client)
 {
-    printf("client_destroy\n");
 	/* Remove the window */
 	window_destroy(client->win);
 	free(client);
@@ -60,7 +59,6 @@ void client_destroy(client_t *client)
 /* Code executed by the client */
 void *client_run(void *arg)
 {
-    printf("client_run\n");
 	client_t *client = (client_t *) arg;
 
 	/* main loop of the client: fetch commands from window, interpret
@@ -78,7 +76,7 @@ void *client_run(void *arg)
 
 int handle_command(char *command, char *response, int len)
 {
-    printf("command received = %255s",command);
+    printf("command received = %s\n",command);
     while (stopped == 1) {
         // The mutex for waiting
     }
@@ -90,7 +88,7 @@ int handle_command(char *command, char *response, int len)
 
 	interpret_command(command, response, len);
 
-    printf("command executed = %255s",command);
+    printf("command executed = %s\n",command);
     
 	return 1;
 }
@@ -134,8 +132,10 @@ int main(int argc, char *argv[])
             }
         } else if (command[0] == 's') {
             stopped = 1; // STOP
+            printf("Stop mode.\n");
         } else if (command[0] == 'g') {
             stopped = 0; // GO
+            printf("Go mode.\n");
         }
 
         if (argc != 1) {
