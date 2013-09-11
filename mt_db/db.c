@@ -11,6 +11,10 @@ node_t head = { "", "", 0, 0 };
 
 pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
+int  pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
+int  pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
+int  pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
+
 node_t *node_create(char *arg_name, char *arg_value,
 			 node_t * arg_left, node_t * arg_right)
 {
@@ -50,6 +54,8 @@ void node_destroy(node_t * node)
 
 void query(char *name, char *result, int len)
 {
+    pthread_rwlock_rdlock(&rwlock);
+    
 	node_t *target;
 
 	target = search(name, &head, 0);
@@ -60,10 +66,14 @@ void query(char *name, char *result, int len)
 		strncpy(result, target->value, len - 1);
 		return;
 	}
+    
+    pthread_rwlock_unlock(&rwlock);
 }
 
 int add(char *name, char *value)
 {
+    pthread_rwlock_wrlock(&rwlock);
+    
 	node_t *parent;
 	node_t *target;
 	node_t *newnode;
@@ -79,11 +89,15 @@ int add(char *name, char *value)
 	else
 		parent->rchild = newnode;
 
+    pthread_rwlock_unlock(&rwlock);
+    
 	return 1;
 }
 
 int xremove(char *name)
 {
+    pthread_rwlock_wrlock(&rwlock);
+    
 	node_t *parent;
 	node_t *dnode;
 	node_t *next;
@@ -142,6 +156,8 @@ int xremove(char *name)
 		node_destroy(next);
 	}
 
+    pthread_rwlock_unlock(&rwlock);
+    
 	return 1;
 }
 
