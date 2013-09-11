@@ -78,6 +78,21 @@ int handle_command(char *command, char *response, int len)
 	return 1;
 }
 
+// THIS IS JUST TESTING
+void *inc_x(void *x_void_ptr)
+{
+    
+    /* increment x to 100 */
+    int *x_ptr = (int *)x_void_ptr;
+    while(++(*x_ptr) < 100);
+    
+    printf("x increment finished\n");
+    
+    /* the function must return something - NULL will do */
+    return NULL;
+    
+}
+
 int main(int argc, char *argv[])
 {
     printf("my new version\n");
@@ -91,34 +106,39 @@ int main(int argc, char *argv[])
     while (flag == 1){
         fgets (command, 20, stdin); // This isn't a "bulletproof" way of receiving input. Maybe we improve it later.
         if (command[0] == 'e'){
-            client_t *c;
+
+            client_t client_thread;
+            pthread_t temp_thread = client_thread.thread; // CAUSES SEG FAULT
+            client_t *c = &client_thread;
             
             // THINK WE NEED TO CREATE A NEW THREAD HERE
-            /*int  pthread_create(pthread_t  *  thread, pthread_attr_t * attr, void *
-                                (*start_routine)(void *), void * arg);
-
-            
-            if(pthread_create(&c->pthread_t, NULL, client_run, &x)) {
+            if(pthread_create(&temp_thread, NULL, client_run, &c)) {
                 
                 fprintf(stderr, "Error creating thread\n");
                 return 1;
                 
+            } else {
+                client_threads[num_threads++] = c;
+                client_destroy(c);
+                num_threads--;
+                printf("made it, yo \n");
             }
-            */
             
+            /*else {
+                printf("Sure, I'll make a thread for you, champ.\n");
+                // client_t *c;
+                c = client_create(num_threads);
+                client_threads[num_threads] = c;
+                num_threads++;
+                
+                client_run((void *)c);
+                client_destroy(c);
+                num_threads--;
+                
+                //create new client
+                //show window
+            }*/
             
-            printf("Sure, I'll make a thread for you, champ.");
-           // client_t *c;
-            c = client_create(num_threads);
-            client_threads[num_threads] = c;
-            num_threads++;
-            
-            client_run((void *)c);
-            client_destroy(c);
-            num_threads--;
-
-            //create new client
-            //show window
         }
         if (argc != 1) {
             fprintf(stderr, "Usage: server\n");
