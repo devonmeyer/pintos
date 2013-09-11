@@ -22,11 +22,15 @@ typedef struct Client {
 	window_t *win;
 } client_t;
 
+/* The number of client threads. */
+int num_client_threads = 0;
+
 void *client_run(void *);
 int handle_command(char *, char *, int len);
 
 client_t *client_create(int ID)
 {
+    printf("client_create\n");
 	client_t *new_Client = (client_t *) malloc(sizeof(client_t));
 	char title[16];
 
@@ -43,6 +47,7 @@ client_t *client_create(int ID)
 
 void client_destroy(client_t *client)
 {
+    printf("client_destroy\n");
 	/* Remove the window */
 	window_destroy(client->win);
 	free(client);
@@ -51,6 +56,7 @@ void client_destroy(client_t *client)
 /* Code executed by the client */
 void *client_run(void *arg)
 {
+    printf("client_run\n");
 	client_t *client = (client_t *) arg;
 
 	/* main loop of the client: fetch commands from window, interpret
@@ -79,18 +85,15 @@ int handle_command(char *command, char *response, int len)
 }
 
 // THIS IS JUST TESTING
-void *inc_x(void *x_void_ptr)
+void *my_create_client_method(void *arg)
 {
+    client_t *client = (client_t *) arg;
     
-    /* increment x to 100 */
-    int *x_ptr = (int *)x_void_ptr;
-    while(++(*x_ptr) < 100);
+    client = client_create(num_client_threads++); // THIS NEEDS TO REFLECT THE NUMBER OF THREADS
+    client_run((void *)client);
+    client_destroy(client);
     
-    printf("x increment finished\n");
-    
-    /* the function must return something - NULL will do */
-    return NULL;
-    
+    return 0;    
 }
 
 int main(int argc, char *argv[])
@@ -112,15 +115,12 @@ int main(int argc, char *argv[])
             client_t *c = &client_thread;
             
             // THINK WE NEED TO CREATE A NEW THREAD HERE
-            if(pthread_create(&temp_thread, NULL, client_run, &c)) {
+            if(pthread_create(&temp_thread, NULL, my_create_client_method, &c)) {
                 
                 fprintf(stderr, "Error creating thread\n");
                 return 1;
                 
             } else {
-                client_threads[num_threads++] = c;
-                client_destroy(c);
-                num_threads--;
                 printf("made it, yo \n");
             }
             
