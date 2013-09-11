@@ -9,6 +9,8 @@ node_t *search(char *, node_t *, node_t **);
 
 node_t head = { "", "", 0, 0 };
 
+pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+
 node_t *node_create(char *arg_name, char *arg_value,
 			 node_t * arg_left, node_t * arg_right)
 {
