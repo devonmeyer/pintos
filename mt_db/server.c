@@ -48,6 +48,7 @@ client_t *client_create(int ID)
 
 void client_destroy(client_t *client)
 {
+    printf("client_destroy\n");
 	/* Remove the window */
 	window_destroy(client->win);
 	free(client);
@@ -56,6 +57,7 @@ void client_destroy(client_t *client)
 /* Code executed by the client */
 void *client_run(void *arg)
 {
+    printf("client_run\n");
 	client_t *client = (client_t *) arg;
 
 	/* main loop of the client: fetch commands from window, interpret
