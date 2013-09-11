@@ -78,17 +78,18 @@ void *client_run(void *arg)
 
 int handle_command(char *command, char *response, int len)
 {
-    if (stopped == 0) {
-            
-	    if (command[0] == EOF) {
-            strncpy(response, "all done", len - 1);
-            return 0;
-	    }
+   while (stopped == 1) {
+       // The mutex for waiting
+   }
+    
+    if (command[0] == EOF) {
+        strncpy(response, "all done", len - 1);
+        return 0;
+    }
 
-	    interpret_command(command, response, len);
+	interpret_command(command, response, len);
 
-	    return 1;
-    } // NEED TO ADD MESSAGING SAYING IT IS IN STOPPED MODE
+	return 1;
 }
 
 void *my_create_client_method(void *arg)
@@ -131,7 +132,7 @@ int main(int argc, char *argv[])
         } else if (command[0] == 's') {
             stopped = 1; // STOP
         } else if (command[0] == 'g') {
-            stopped = 0;
+            stopped = 0; // GO
         }
 
         if (argc != 1) {
