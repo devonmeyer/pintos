@@ -9,4 +9,6 @@ typedef struct Node {
 
 extern node_t head;
 
+extern pthread_rwlock_t rwlock;
+
 void interpret_command(char *, char *, int);
