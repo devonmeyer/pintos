@@ -78,9 +78,10 @@ void *client_run(void *arg)
 
 int handle_command(char *command, char *response, int len)
 {
-   while (stopped == 1) {
-       // The mutex for waiting
-   }
+    printf("command received = %255s",command);
+    while (stopped == 1) {
+        // The mutex for waiting
+    }
     
     if (command[0] == EOF) {
         strncpy(response, "all done", len - 1);
@@ -89,6 +90,8 @@ int handle_command(char *command, char *response, int len)
 
 	interpret_command(command, response, len);
 
+    printf("command executed = %255s",command);
+    
 	return 1;
 }
 
