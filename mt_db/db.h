@@ -9,6 +9,8 @@ typedef struct Node {
 
 extern node_t head;
 
+#ifdef COARSE_LOCK
 extern pthread_rwlock_t rwlock;
+#endif
 
 void interpret_command(char *, char *, int);

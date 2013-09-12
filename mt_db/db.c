@@ -9,11 +9,13 @@ node_t *search(char *, node_t *, node_t **);
 
 node_t head = { "", "", 0, 0 };
 
+#ifdef COARSE_LOCK
 pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 int  pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
 int  pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
 int  pthread_rwlock_unlock(pthread_rwlock_t *rwlock);
+#endif
 
 node_t *node_create(char *arg_name, char *arg_value,
 			 node_t * arg_left, node_t * arg_right)
@@ -209,9 +211,13 @@ void interpret_command(char *command, char *response, int len)
 			return;
 		}
         
+        #ifdef COARSE_LOCK
         pthread_rwlock_rdlock(&rwlock); /*Semaphore*/
-		query(name, response, len);	
+        #endif
+		query(name, response, len);
+        #ifdef COARSE_LOCK
         pthread_rwlock_unlock(&rwlock);
+        #endif
         
         if (strlen(response) == 0) {
 			strncpy(response, "not found", len - 1);
@@ -227,14 +233,17 @@ void interpret_command(char *command, char *response, int len)
 			return;
 		}
 
-        
+        #ifdef COARSE_LOCK
         pthread_rwlock_wrlock(&rwlock); /*Semaphore*/
+        #endif
 		if (add(name, value)) {
 			strncpy(response, "added", len - 1);
 		} else {
 			strncpy(response, "already in database", len - 1);
 		}
+        #ifdef COARSE_LOCK
         pthread_rwlock_unlock(&rwlock);
+        #endif
 
 		return;
 
@@ -246,14 +255,17 @@ void interpret_command(char *command, char *response, int len)
 			return;
 		}
 
-        
+        #ifdef COARSE_LOCK
         pthread_rwlock_wrlock(&rwlock); /*Semaphore*/
+        #endif
 		if (xremove(name)) {
 			strncpy(response, "removed", len - 1);
 		} else {
 			strncpy(response, "not in database", len - 1);
 		}
+        #ifdef COARSE_LOCK
         pthread_rwlock_unlock(&rwlock);
+        #endif 
 
 		return;
 
