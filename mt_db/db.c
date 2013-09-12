@@ -54,8 +54,6 @@ void node_destroy(node_t * node)
 
 void query(char *name, char *result, int len)
 {
-    pthread_rwlock_rdlock(&rwlock);
-    
 	node_t *target;
 
 	target = search(name, &head, 0);
@@ -66,14 +64,10 @@ void query(char *name, char *result, int len)
 		strncpy(result, target->value, len - 1);
 		return;
 	}
-    
-    pthread_rwlock_unlock(&rwlock);
 }
 
 int add(char *name, char *value)
 {
-    pthread_rwlock_wrlock(&rwlock);
-    
 	node_t *parent;
 	node_t *target;
 	node_t *newnode;
@@ -88,16 +82,12 @@ int add(char *name, char *value)
 		parent->lchild = newnode;
 	else
 		parent->rchild = newnode;
-
-    pthread_rwlock_unlock(&rwlock);
     
 	return 1;
 }
 
 int xremove(char *name)
 {
-    pthread_rwlock_wrlock(&rwlock);
-    
 	node_t *parent;
 	node_t *dnode;
 	node_t *next;
@@ -155,8 +145,6 @@ int xremove(char *name)
 		*pnext = next->rchild;
 		node_destroy(next);
 	}
-
-    pthread_rwlock_unlock(&rwlock);
     
 	return 1;
 }
@@ -220,9 +208,12 @@ void interpret_command(char *command, char *response, int len)
 			strncpy(response, "ill-formed command", len - 1);
 			return;
 		}
-
-		query(name, response, len);
-		if (strlen(response) == 0) {
+        
+        pthread_rwlock_rdlock(&rwlock); /*Semaphore*/
+		query(name, response, len);	
+        pthread_rwlock_unlock(&rwlock);
+        
+        if (strlen(response) == 0) {
 			strncpy(response, "not found", len - 1);
 		}
 
@@ -236,11 +227,14 @@ void interpret_command(char *command, char *response, int len)
 			return;
 		}
 
+        
+        pthread_rwlock_wrlock(&rwlock); /*Semaphore*/
 		if (add(name, value)) {
 			strncpy(response, "added", len - 1);
 		} else {
 			strncpy(response, "already in database", len - 1);
 		}
+        pthread_rwlock_unlock(&rwlock);
 
 		return;
 
@@ -252,11 +246,14 @@ void interpret_command(char *command, char *response, int len)
 			return;
 		}
 
+        
+        pthread_rwlock_wrlock(&rwlock); /*Semaphore*/
 		if (xremove(name)) {
 			strncpy(response, "removed", len - 1);
 		} else {
 			strncpy(response, "not in database", len - 1);
 		}
+        pthread_rwlock_unlock(&rwlock);
 
 		return;
 
