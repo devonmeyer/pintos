@@ -41,6 +41,10 @@ node_t *node_create(char *arg_name, char *arg_value,
 	strcpy(new_node->value, arg_value);
 	new_node->lchild = arg_left;
 	new_node->rchild = arg_right;
+    #ifdef FINE_LOCK
+    pthread_rwlock_init(&new_node->node_lock, NULL);
+    //new_node->node_lock = PTHREAD_RWLOCK_INITIALIZER;
+    #endif
 
 	return new_node;
 }
@@ -63,7 +67,13 @@ void query(char *name, char *result, int len)
 		strncpy(result, "not found", len - 1);
 		return;
 	} else {
+        #ifdef FINE_LOCK
+        pthread_rwlock_rdlock(&target->node_lock);
+        #endif
 		strncpy(result, target->value, len - 1);
+        #ifdef FINE_LOCK
+        pthread_rwlock_unlock(&target->node_lock);
+        #endif
 		return;
 	}
 }
@@ -79,12 +89,16 @@ int add(char *name, char *value)
 	}
 
 	newnode = node_create(name, value, 0, 0);
-
+    #ifdef FINE_LOCK
+    pthread_rwlock_wrlock(&parent->node_lock);
+    #endif
 	if (strcmp(name, parent->name) < 0)
 		parent->lchild = newnode;
 	else
 		parent->rchild = newnode;
-    
+    #ifdef FINE_LOCK
+    pthread_rwlock_unlock(&parent->node_lock);
+    #endif
 	return 1;
 }
 
@@ -100,25 +114,39 @@ int xremove(char *name)
 		/* it's not there */
 		return 0;
 	}
-
+    #ifdef FINE_LOCK
+    pthread_rwlock_wrlock(&dnode->node_lock);
+    #endif
 	/* we found it.  Now check out the easy cases.  If the node has no
 	 * right child, then we can merely replace its parent's pointer to
 	 * it with the node's left child. */
 	if (dnode->rchild == 0) {
+        #ifdef FINE_LOCK
+        pthread_rwlock_wrlock(&parent->node_lock);
+        #endif
 		if (strcmp(dnode->name, parent->name) < 0)
 			parent->lchild = dnode->lchild;
 		else
 			parent->rchild = dnode->lchild;
-
+        #ifdef FINE_LOCK
+        pthread_rwlock_unlock(&parent->node_lock);
+        pthread_rwlock_unlock(&dnode->node_lock);
+        #endif
 		/* done with dnode */
 		node_destroy(dnode);
 	} else if (dnode->lchild == 0) {
 		/* ditto if the node had no left child */
+        #ifdef FINE_LOCK
+        pthread_rwlock_wrlock(&parent->node_lock);
+        #endif
 		if (strcmp(dnode->name, parent->name) < 0)
 			parent->lchild = dnode->rchild;
 		else
 			parent->rchild = dnode->rchild;
-
+        #ifdef FINE_LOCK
+        pthread_rwlock_unlock(&parent->node_lock);
+        pthread_rwlock_unlock(&dnode->node_lock);
+        #endif
 		/* done with dnode */
 		node_destroy(dnode);
 	} else {
@@ -136,15 +164,38 @@ int xremove(char *name)
 		 * lchild or rchild) */
 		pnext = &dnode->rchild;
 		next = *pnext;
+        #ifdef FINE_LOCK
+        pthread_rwlock_rdlock(&next->node_lock);
+        node_t* last_parent = dnode;
+        #endif
 		while (next->lchild != 0) {
 			/* work our way down the lchild chain, finding the smallest node
 			 * in the subtree. */
-			pnext = &next->lchild;
+            pnext = &next->lchild;
+            #ifdef FINE_LOCK
+            last_parent = next;
+            pthread_rwlock_unlock(&next->node_lock);
+            #endif
 			next = *pnext;
+            #ifdef FINE_LOCK
+            pthread_rwlock_rdlock(&next->node_lock);
+            #endif
 		}
+        #ifdef FINE_LOCK
+        pthread_rwlock_unlock(&next->node_lock);
+        if(last_parent != dnode){
+            pthread_rwlock_wrlock(&last_parent->node_lock);
+        }
+        #endif
 		strcpy(dnode->name, next->name);
 		strcpy(dnode->value, next->value);
 		*pnext = next->rchild;
+        #ifdef FINE_LOCK
+        pthread_rwlock_unlock(&dnode->node_lock);
+        if(last_parent != dnode){
+            pthread_rwlock_unlock(&last_parent->node_lock);
+        }
+        #endif
 		node_destroy(next);
 	}
     

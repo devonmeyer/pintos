@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -I. -D COARSE_LOCK #-D__RUN_WINDOW_SCRIPT__
+CFLAGS = -g -I. -D FINE_LOCK #-D__RUN_WINDOW_SCRIPT__
 LDFLAGS = -pthread
 
 all:	server interface

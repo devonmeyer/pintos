@@ -5,6 +5,9 @@ typedef struct Node {
 	char *value;
 	struct Node *lchild;
 	struct Node *rchild;
+    #ifdef FINE_LOCK
+    pthread_rwlock_t node_lock;
+    #endif
 } node_t;
 
 extern node_t head;
