@@ -28,6 +28,19 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/* New structure to keep track of sleeping threads */
+struct sleeping_thread 
+  {
+    struct list_elem elem;
+    struct thread *t;    
+    int64_t wake_up_time;
+  };
+
+/* List of processes in THREAD_BLOCK state, that is, processes
+   that are sleeping. */
+
+static struct list blocked_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -68,6 +81,7 @@ static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
+void thread_sleep(int64_t start, int64_t duration);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
@@ -91,6 +105,7 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
+  list_init (&blocked_list);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -375,7 +390,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -542,6 +557,47 @@ thread_schedule_tail (struct thread *prev)
     }
 }
 
+/* Puts a thread to sleep by blocking the thread, updating the status,
+   and adding the thread to the list of blocked threads. 
+   
+   This function is imitating thread_block but is specifically preparing
+   it for sleep. */
+
+void
+thread_sleep(int64_t start, int64_t duration) {
+  enum intr_level old_level = intr_disable ();
+  ASSERT (!intr_context ());
+  ASSERT (intr_get_level () == INTR_OFF);
+  
+  struct thread *cur = thread_current ();
+  list_remove(&cur->elem);
+  cur->status = THREAD_BLOCKED;
+  struct sleeping_thread *sleepy;
+  sleepy->t = cur;
+  sleepy->wake_up_time = (start + duration);
+
+  list_push_back (&blocked_list, &sleepy->t->elem);
+  intr_set_level (old_level);
+  schedule ();
+}
+
+void
+wake_up_sleeping_threads()
+{
+  int64_t current_tick = timer_ticks ();
+  struct list_elem *e; 
+
+  for (e = list_begin (&blocked_list); e != list_end (&blocked_list); e = list_next (e))
+    {
+      struct sleeping_thread *sleepy = list_entry(e, struct sleeping_thread, elem);
+      if (current_tick >= sleepy->wake_up_time)
+        {
+          thread_unblock(sleepy->t);
+	  list_remove(e);	  
+	}
+    }
+}
+
 /* Schedules a new process.  At entry, interrupts must be off and
    the running process's state must have been changed from
    running to some other state.  This function finds another
@@ -559,7 +615,6 @@ schedule (void)
   ASSERT (intr_get_level () == INTR_OFF);
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
-
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
@@ -578,7 +633,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
