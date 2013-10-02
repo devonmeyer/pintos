@@ -28,13 +28,6 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
-/* New structure to keep track of sleeping threads */
-struct sleeping_thread 
-  {
-    struct list_elem elem;
-    struct thread *t;    
-    int64_t wake_up_time;
-  };
 
 /* List of processes in THREAD_BLOCK state, that is, processes
    that are sleeping. */
@@ -478,6 +471,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+    t->wake_up_time = 0;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -570,13 +564,11 @@ thread_sleep(int64_t start, int64_t duration) {
   ASSERT (intr_get_level () == INTR_OFF);
   
   struct thread *cur = thread_current ();
-  list_remove(&cur->elem);
+  //list_remove(&cur->elem);
   cur->status = THREAD_BLOCKED;
-  struct sleeping_thread *sleepy = malloc(sizeof *sleepy);
-  sleepy->t = cur;
-  sleepy->wake_up_time = (start + duration);
+  cur->wake_up_time = (start + duration);
 
-  list_push_back (&blocked_list, &sleepy->elem);
+  list_push_back (&blocked_list, &cur->elem);
   schedule ();
   intr_set_level (old_level);
 }
@@ -585,16 +577,14 @@ void
 wake_up_sleeping_threads()
 {
   int64_t current_tick = timer_ticks ();
-  struct list_elem *e; 
+  struct list_elem *e;
 
   for (e = list_begin (&blocked_list); e != list_end (&blocked_list); e = list_next (e))
     {
-      struct sleeping_thread *sleepy = list_entry(e, struct sleeping_thread, elem);
-      if (current_tick >= sleepy->wake_up_time)
+      struct thread *t = list_entry(e, struct thread, elem);
+      if (current_tick >= t->wake_up_time)
         {
-          thread_unblock(sleepy->t);
-	  list_remove(e);	  
-	  free(sleepy);
+          thread_unblock(t);
 	}
     }
 }
