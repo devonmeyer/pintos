@@ -572,13 +572,13 @@ thread_sleep(int64_t start, int64_t duration) {
   struct thread *cur = thread_current ();
   list_remove(&cur->elem);
   cur->status = THREAD_BLOCKED;
-  struct sleeping_thread *sleepy;
+  struct sleeping_thread *sleepy = malloc(sizeof *sleepy);
   sleepy->t = cur;
   sleepy->wake_up_time = (start + duration);
 
-  list_push_back (&blocked_list, &sleepy->t->elem);
-  intr_set_level (old_level);
+  list_push_back (&blocked_list, &sleepy->elem);
   schedule ();
+  intr_set_level (old_level);
 }
 
 void
@@ -594,6 +594,7 @@ wake_up_sleeping_threads()
         {
           thread_unblock(sleepy->t);
 	  list_remove(e);	  
+	  free(sleepy);
 	}
     }
 }
