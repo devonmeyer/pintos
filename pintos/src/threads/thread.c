@@ -29,10 +29,10 @@ static struct list ready_list;
 static struct list all_list;
 
 
-/* List of processes in THREAD_BLOCK state, that is, processes
-   that are sleeping. */
+//  List of processes in THREAD_BLOCK state, that is, processes
+//    that are sleeping. 
 
-static struct list blocked_list;
+// static struct list blocked_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -98,7 +98,7 @@ thread_init (void)
 
   lock_init (&tid_lock);
   list_init (&ready_list);
-  list_init (&blocked_list);
+  // list_init (&blocked_list);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -564,11 +564,11 @@ thread_sleep(int64_t start, int64_t duration) {
   ASSERT (intr_get_level () == INTR_OFF);
   
   struct thread *cur = thread_current ();
-  //list_remove(&cur->elem);
+  list_remove(&cur->elem); // remove the thread from the ready list
   cur->status = THREAD_BLOCKED;
   cur->wake_up_time = (start + duration);
 
-  list_push_back (&blocked_list, &cur->elem);
+  // list_push_back (&blocked_list, &cur->elem);
   schedule ();
   intr_set_level (old_level);
 }
@@ -579,13 +579,16 @@ wake_up_sleeping_threads()
   int64_t current_tick = timer_ticks ();
   struct list_elem *e;
 
-  for (e = list_begin (&blocked_list); e != list_end (&blocked_list); e = list_next (e))
+  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
     {
-      struct thread *t = list_entry(e, struct thread, elem);
-      if (current_tick >= t->wake_up_time)
-        {
+      struct thread *t = list_entry(e, struct thread, allelem);
+
+      // A sleeping thread will have a NONZERO wake up time
+      if (t->wake_up_time != 0 && current_tick >= t->wake_up_time) 
+      {
+          t->wake_up_time = 0; // reset the wake up time to ZERO
           thread_unblock(t);
-	}
+      }
     }
 }
 
@@ -599,6 +602,7 @@ wake_up_sleeping_threads()
 static void
 schedule (void) 
 {
+  wake_up_sleeping_threads();
   struct thread *cur = running_thread ();
   struct thread *next = next_thread_to_run ();
   struct thread *prev = NULL;
