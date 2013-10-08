@@ -141,9 +141,12 @@ sleeper (void *t_)
   struct sleep_test *test = t->test;
   int i;
 
+
   for (i = 1; i <= test->iterations; i++) 
     {
       int64_t sleep_until = test->start + i * t->duration;
+      //msg ("Running sleeper on %d for %d.", t->id, (sleep_until-timer_ticks()));
+
       timer_sleep (sleep_until - timer_ticks ());
       lock_acquire (&test->output_lock);
       *test->output_pos++ = t->id;

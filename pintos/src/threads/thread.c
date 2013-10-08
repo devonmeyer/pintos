@@ -28,11 +28,11 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+/* Lock used for the ready_list. */
+static struct lock ready_list_lock;
 
-//  List of processes in THREAD_BLOCK state, that is, processes
-//    that are sleeping. 
-
-// static struct list blocked_list;
+/* Lock used for the all_list. */
+static struct lock all_list_lock;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -97,8 +97,10 @@ thread_init (void)
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
+  lock_init (&ready_list_lock);
+  lock_init (&all_list_lock);
+
   list_init (&ready_list);
-  // list_init (&blocked_list);
   list_init (&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -245,7 +247,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
+  lock_acquire (&ready_list_lock);
   list_push_back (&ready_list, &t->elem);
+  lock_release (&ready_list_lock);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -271,7 +275,7 @@ thread_current (void)
      of stack, so a few big automatic arrays or moderate
      recursion can cause stack overflow. */
   ASSERT (is_thread (t));
-  ASSERT (t->status == THREAD_RUNNING);
+  ASSERT (t->status == THREAD_RUNNING); 
 
   return t;
 }
@@ -298,7 +302,9 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
+  lock_acquire (&all_list_lock);
   list_remove (&thread_current()->allelem);
+  lock_release (&all_list_lock);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -315,8 +321,11 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
+  lock_acquire (&ready_list_lock);
   if (cur != idle_thread) 
     list_push_back (&ready_list, &cur->elem);
+
+  lock_release (&ready_list_lock);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -551,6 +560,7 @@ thread_schedule_tail (struct thread *prev)
     }
 }
 
+
 /* Puts a thread to sleep by blocking the thread, updating the status,
    and adding the thread to the list of blocked threads. 
    
@@ -562,11 +572,15 @@ thread_sleep(int64_t start, int64_t duration) {
   enum intr_level old_level = intr_disable ();
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
-  
+
   struct thread *cur = thread_current ();
+  lock_acquire (&ready_list_lock);
   list_remove(&cur->elem); // remove the thread from the ready list
+  lock_release (&ready_list_lock);
   cur->status = THREAD_BLOCKED;
   cur->wake_up_time = (start + duration);
+
+  // printf ("THREAD_SLEEP: %s, %d \n",cur->name,cur->wake_up_time);
 
   // list_push_back (&blocked_list, &cur->elem);
   schedule ();
@@ -574,14 +588,18 @@ thread_sleep(int64_t start, int64_t duration) {
 }
 
 void
-wake_up_sleeping_threads()
+wake_up_sleeping_threads (void)
 {
   int64_t current_tick = timer_ticks ();
   struct list_elem *e;
 
+  //lock_acquire (&all_list_lock);
   for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
-    {
+    { 
       struct thread *t = list_entry(e, struct thread, allelem);
+      if (t->wake_up_time != 0){
+        //printf ("Name: %s, %d \n",t->name, t->wake_up_time);
+      }
 
       // A sleeping thread will have a NONZERO wake up time
       if (t->wake_up_time != 0 && current_tick >= t->wake_up_time) 
@@ -590,6 +608,7 @@ wake_up_sleeping_threads()
           thread_unblock(t);
       }
     }
+    //lock_release (&all_list_lock);
 }
 
 /* Schedules a new process.  At entry, interrupts must be off and
@@ -602,7 +621,6 @@ wake_up_sleeping_threads()
 static void
 schedule (void) 
 {
-  wake_up_sleeping_threads();
   struct thread *cur = running_thread ();
   struct thread *next = next_thread_to_run ();
   struct thread *prev = NULL;
@@ -613,6 +631,7 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+  wake_up_sleeping_threads ();
 }
 
 /* Returns a tid to use for a new thread. */
