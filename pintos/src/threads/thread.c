@@ -76,6 +76,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_sleep(int64_t start, int64_t duration);
 void thread_schedule_tail (struct thread *prev);
+static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 
 /* Initializes the threading system by transforming the code
@@ -247,9 +248,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  lock_acquire (&ready_list_lock);
+  // lock_acquire (&ready_list_lock);
   list_push_back (&ready_list, &t->elem);
-  lock_release (&ready_list_lock);
+  // lock_release (&ready_list_lock);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -302,9 +303,9 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
-  lock_acquire (&all_list_lock);
+  //lock_acquire (&all_list_lock);
   list_remove (&thread_current()->allelem);
-  lock_release (&all_list_lock);
+  //lock_release (&all_list_lock);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -321,11 +322,11 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  lock_acquire (&ready_list_lock);
+  //lock_acquire (&ready_list_lock);
   if (cur != idle_thread) 
     list_push_back (&ready_list, &cur->elem);
 
-  lock_release (&ready_list_lock);
+  //lock_release (&ready_list_lock);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -590,25 +591,19 @@ thread_sleep(int64_t start, int64_t duration) {
 void
 wake_up_sleeping_threads (void)
 {
-  int64_t current_tick = timer_ticks ();
-  struct list_elem *e;
+  thread_foreach(wake_up_thread, NULL);
+}
 
-  //lock_acquire (&all_list_lock);
-  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
-    { 
-      struct thread *t = list_entry(e, struct thread, allelem);
-      if (t->wake_up_time != 0){
-        //printf ("Name: %s, %d \n",t->name, t->wake_up_time);
-      }
+static void
+wake_up_thread (struct thread * t, void * aux){
+  // A sleeping thread will have a NONZERO wake up time
+  int64_t current_tick = timer_ticks ();  
+  if (t->wake_up_time != 0 && current_tick >= t->wake_up_time) 
+  {
+      t->wake_up_time = 0; // reset the wake up time to ZERO
+      thread_unblock(t);
+  }
 
-      // A sleeping thread will have a NONZERO wake up time
-      if (t->wake_up_time != 0 && current_tick >= t->wake_up_time) 
-      {
-          t->wake_up_time = 0; // reset the wake up time to ZERO
-          thread_unblock(t);
-      }
-    }
-    //lock_release (&all_list_lock);
 }
 
 /* Schedules a new process.  At entry, interrupts must be off and
@@ -631,7 +626,6 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
-  wake_up_sleeping_threads ();
 }
 
 /* Returns a tid to use for a new thread. */

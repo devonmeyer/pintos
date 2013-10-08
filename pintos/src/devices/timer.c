@@ -92,7 +92,11 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
-  thread_sleep (start, ticks);
+  enum intr_level old_level = intr_disable ();
+  thread_current ()->wake_up_time = (start + ticks);
+  thread_block();
+  intr_set_level (old_level);
+  //thread_sleep (start, ticks);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -170,7 +174,10 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_tick ();
+  thread_tick ();  
+  enum intr_level old_level = intr_disable ();
+  wake_up_sleeping_threads ();
+  intr_set_level (old_level);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
