@@ -378,7 +378,8 @@ get_priority_of_thread (struct thread * t) {
     return t->priority;
   else
   {
-    return list_front (&t->donated_priorities);
+    struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
+    return pr->priority;
   }
 }
 
