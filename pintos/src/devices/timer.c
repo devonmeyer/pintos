@@ -175,15 +175,17 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  thread_tick ();  
-
-  enum intr_level old_level = intr_disable ();
-
   // The timing of this is VERY important
   if (timer_ticks () % TIMER_FREQ == 0) {
     update_load_avg ();
     recalculate_all_recent_cpu ();
   }
+  
+  thread_tick ();  
+
+  enum intr_level old_level = intr_disable ();
+
+
   wake_up_sleeping_threads ();
   intr_set_level (old_level);
 }
