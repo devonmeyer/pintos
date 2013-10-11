@@ -373,13 +373,13 @@ thread_get_priority (void)
    priority stack. */
 int 
 get_priority_of_thread (struct thread * t) {
-  //if (list_empty (&t->donated_priorities))
+  if (list_empty (&t->donated_priorities))
     return t->priority;
-  //else
-  //{
-  //  struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
-  //  return pr->priority;
-  //}
+  else
+  {
+    struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
+    return pr->priority;
+  }
 }
 
 
@@ -405,7 +405,6 @@ void
 thread_revoke_priority (struct thread * t, int p){
   
   ASSERT(!list_empty(&t->donated_priorities));
-  //printf("num of donated priorities : %d", list_size (&t->donated_priorities));
   struct list_elem *e;
 
   for (e = list_begin (&t->donated_priorities); e != list_end (&t->donated_priorities);
@@ -588,17 +587,25 @@ get_highest_priority_thread (void)
   ASSERT (!list_empty (&ready_list));
 
   // Get the priority of the first thread in the list
-  struct thread * highest = list_entry (list_begin (&ready_list), struct thread, elem);
+  struct thread * highest = NULL;
 
   for (e = list_begin (&ready_list); e != list_end (&ready_list);
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, elem);
-      if (get_priority_of_thread(t) > get_priority_of_thread(highest)) {
-        highest = t;
+      if (t->status == THREAD_READY){
+        if (highest == NULL){
+          highest = t;
+        } else {
+          if (get_priority_of_thread(t) > get_priority_of_thread(highest)) {
+            highest = t;
+          }
+        }
       }
     }
-
+  if(highest == NULL){
+    return idle_thread;
+  }
   list_remove(&highest->elem); // remove the highest priority thread from the ready list (we used to "pop" it off)
 
   return highest;
@@ -614,7 +621,7 @@ thread_has_highest_priority (struct thread * t)
        e = list_next (e))
     {
       struct thread *ready_thread = list_entry (e, struct thread, elem);
-      if (get_priority_of_thread(ready_thread) > get_priority_of_thread (t)) {
+      if ((get_priority_of_thread(ready_thread) >= get_priority_of_thread (t)) && (ready_thread->status == THREAD_READY)) {
         return false;
       }
     }
