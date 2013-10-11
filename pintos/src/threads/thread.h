@@ -106,6 +106,18 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+/*
+
+List element for priorities.
+
+*/
+
+struct prio {
+  struct list_elem prio_elem;
+  int priority;
+};
+
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -136,6 +148,14 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+int get_priority_of_thread (struct thread * t);
+
+
+void thread_donate_priority (struct thread * t, int);
+void thread_revoke_priority (struct thread * t, int);
+
+
 
 int thread_get_nice (void);
 void thread_set_nice (int);

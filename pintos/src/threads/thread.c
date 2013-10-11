@@ -80,7 +80,7 @@ static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 static struct thread *get_highest_priority_thread (void);
 static bool thread_has_highest_priority (struct thread * t);
-static int get_priority_of_thread (struct thread * t);
+//static int get_priority_of_thread (struct thread * t);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -372,7 +372,7 @@ thread_get_priority (void)
 /* Returns the current thread's priority if it has not been given a donated
    priority.  Otherwise, returns the top item from the thread's donated
    priority stack. */
-static int 
+int 
 get_priority_of_thread (struct thread * t) {
   if (list_empty (&t->donated_priorities))
     return t->priority;
@@ -381,6 +381,46 @@ get_priority_of_thread (struct thread * t) {
     return list_front (&t->donated_priorities);
   }
 }
+
+
+/*
+
+  Add p to the thread t's stack of donated priorities.
+
+*/
+void
+thread_donate_priority (struct thread * t, int p){
+  struct prio * pr = malloc(sizeof(struct prio));
+  pr->priority = p;
+  list_push_front(&t->donated_priorities, pr);
+}
+
+
+/*
+
+  Remove p from the thread's stack of donated priorities
+
+*/
+void
+thread_revoke_priority (struct thread * t, int p){
+  
+  ASSERT(!list_empty(&t->donated_priorities));
+  //printf("num of donated priorities : %d", list_size (&t->donated_priorities));
+  struct list_elem *e;
+
+  for (e = list_begin (&t->donated_priorities); e != list_end (&t->donated_priorities);
+       e = list_next (e))
+    {
+      struct prio *pr = list_entry (e, struct prio, prio_elem);
+      if (pr->priority == p){
+        list_remove(e);
+        return;
+      }
+    }
+
+}
+
+
 
 /* Sets the current thread's nice value to NICE. */
 void
