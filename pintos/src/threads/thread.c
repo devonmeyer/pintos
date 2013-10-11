@@ -79,7 +79,7 @@ void thread_schedule_tail (struct thread *prev);
 static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 static struct thread *get_highest_priority_thread (void);
-
+static bool thread_has_highest_priority (struct thread *t);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -356,9 +356,14 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if (!thread_has_highest_priority (thread_current ())) {
+    thread_yield ();
+  }
 }
 
-/* Returns the current thread's priority. */
+/* Returns the current thread's priority if it has not been given a donated
+   priority.  Otherwise, returns the top item from the thread's donated
+   priority stack. */
 int
 thread_get_priority (void) 
 {
@@ -521,26 +526,46 @@ next_thread_to_run (void)
 static struct thread *
 get_highest_priority_thread (void)
 {
-   struct list_elem *e;
+  struct list_elem *e;
 
   ASSERT (intr_get_level () == INTR_OFF);
+  
+  // This assertion added by us
   ASSERT (!list_empty (&ready_list));
 
   // Get the priority of the first thread in the list
   struct thread * highest = list_entry (list_begin (&ready_list), struct thread, elem);
-  int prio = highest->priority;
 
   for (e = list_begin (&ready_list); e != list_end (&ready_list);
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, elem);
-      if (t->priority > prio) {
+      if (t->priority > highest->priority) {
         highest = t;
-        prio = t->priority;
       }
     }
 
-    return highest;
+  list_remove(&highest->elem); // remove the highest priority thread from the ready list (we used to "pop" it off)
+
+  return highest;
+}
+
+static bool
+thread_has_highest_priority (struct thread * t)
+{
+  struct list_elem *e;
+
+  // Compare the priority of the current thread with the threads in the ready list
+  for (e = list_begin (&ready_list); e != list_end (&ready_list);
+       e = list_next (e))
+    {
+      struct thread *ready_thread = list_entry (e, struct thread, elem);
+      if (ready_thread->priority > t->priority) {
+        return false;
+      }
+    }
+
+  return true;
 }
 
 /* Completes a thread switch by activating the new thread's page
