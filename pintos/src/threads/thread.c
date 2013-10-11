@@ -308,6 +308,7 @@ thread_exit (void)
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
+     
   intr_disable ();
   //lock_acquire (&all_list_lock);
   list_remove (&thread_current()->allelem);
@@ -319,6 +320,7 @@ thread_exit (void)
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
+
 void
 thread_yield (void) 
 {
@@ -340,6 +342,7 @@ thread_yield (void)
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
+
 void
 thread_foreach (thread_action_func *func, void *aux)
 {
@@ -356,6 +359,7 @@ thread_foreach (thread_action_func *func, void *aux)
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
+
 void
 thread_set_priority (int new_priority) 
 {
@@ -366,6 +370,7 @@ thread_set_priority (int new_priority)
 }
 
 /* Gets the priority of the current thread. */
+
 int
 thread_get_priority (void) 
 {
@@ -375,6 +380,7 @@ thread_get_priority (void)
 /* Returns the current thread's priority if it has not been given a donated
    priority.  Otherwise, returns the top item from the thread's donated
    priority stack. */
+
 int 
 get_priority_of_thread (struct thread * t) {
   if (list_empty (&t->donated_priorities)){
@@ -392,27 +398,31 @@ get_priority_of_thread (struct thread * t) {
 
 /*
 
-  Add p to the thread t's stack of donated priorities.
+  Add p to the thread t's stack of donated priorities by creating a prio_element and adding it
+  to the stack of donated priorities.
 
 */
 void
-thread_donate_priority (struct thread * t, int p){
-  ASSERT (intr_get_level () == INTR_OFF);
+thread_donate_priority (struct thread * t, struct thread * donator){
+  //ASSERT (intr_get_level () == INTR_OFF);
   struct prio * pr = malloc(sizeof(struct prio));
-  pr->priority = p;
+  pr->donator = donator;
+  pr->priority = get_priority_of_thread(donator);
   list_push_front(&t->donated_priorities, &pr->prio_elem);
 }
 
 
 /*
 
-  Remove p from the thread's stack of donated priorities
+  Remove revoker from the thread's stack of donated priorities.
+
+  Essentially, find the priority donation that was given to t by revoker, and remove it.
 
 */
 void
-thread_revoke_priority (struct thread * t, int p){
+thread_revoke_priority (struct thread * t, struct thread * revoker){
   ASSERT(!list_empty(&t->donated_priorities));
-  ASSERT (intr_get_level () == INTR_OFF);
+  //ASSERT (intr_get_level () == INTR_OFF);
 
   struct list_elem *e;
 
@@ -420,7 +430,7 @@ thread_revoke_priority (struct thread * t, int p){
        e = list_next (e))
     {
       struct prio *pr = list_entry (e, struct prio, prio_elem);
-      if (pr->priority == p){
+      if (pr->donator == revoker){
         list_remove(&pr->prio_elem);
         return;
       }
@@ -584,6 +594,15 @@ next_thread_to_run (void)
     //return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
+/*
+
+  Returns the highest priority ready thread, and removes it from the ready list.
+
+  Called by next_thread_to_run()
+
+*/
+
+
 static struct thread *
 get_highest_priority_thread (void)
 {
@@ -618,6 +637,13 @@ get_highest_priority_thread (void)
 
   return highest;
 }
+
+/*
+
+  This method returns true if the current-running thread is the highest priority.
+  Used whenever a new thread is added to the ready queue, to determine if we should yield the processor to that new thread.
+
+*/
 
 bool
 thread_has_highest_priority (struct thread * t)

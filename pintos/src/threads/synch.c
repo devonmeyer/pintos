@@ -197,26 +197,18 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread * h = lock->holder;
   bool donated = false;
-  enum intr_level old_level;
-  old_level = intr_disable ();
+
   if (h != NULL){
     // At this point we know that there is a thread, not the current thread, holding the lock.
     if (get_priority_of_thread(h) < thread_get_priority()){
       // At this point we know that the thread holding the lock is of lower priority than the current thread.
       // Therefore, we need to donate our priority.
-      thread_donate_priority(h, thread_get_priority());
+      thread_donate_priority(h, thread_current());
       donated = true;
     }
   }
-  intr_set_level (old_level);
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
-  old_level = intr_disable();
-  if (donated){
-    thread_revoke_priority(h, thread_get_priority());
-  }
-  intr_set_level(old_level);
-
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -249,9 +241,17 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+  struct thread * possible_donator = NULL;
   lock->holder = NULL;
+  if (!list_empty (&lock->semaphore.waiters)){
+    possible_donator = list_entry (list_front (&lock->semaphore.waiters), struct thread, elem);
+  }
   sema_up (&lock->semaphore);
+  if(possible_donator != NULL){
+    //enum intr_level old_level = intr_disable();
+    thread_revoke_priority(thread_current(), possible_donator);
+    //intr_set_level(old_level);
+  }
   if (!thread_has_highest_priority (thread_current ())) {
     thread_yield ();
   }

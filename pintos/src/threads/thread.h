@@ -115,6 +115,7 @@ List element for priorities.
 struct prio {
   struct list_elem prio_elem;
   int priority;
+  struct thread * donator;
 };
 
 
@@ -152,8 +153,8 @@ void thread_set_priority (int);
 int get_priority_of_thread (struct thread * t);
 
 
-void thread_donate_priority (struct thread * t, int);
-void thread_revoke_priority (struct thread * t, int);
+void thread_donate_priority (struct thread * t, struct thread * donator);
+void thread_revoke_priority (struct thread * t, struct thread * revoker);
 
 bool thread_has_highest_priority (struct thread * t);
 
