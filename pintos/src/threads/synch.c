@@ -195,9 +195,25 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+  struct thread * h = lock->holder;
+  if (h != NULL){
+    // At this point we know that there is a thread, not the current thread, holding the lock.
+    if (get_priority_of_thread(h) < thread_get_priority()){
+      // At this point we know that the thread holding the lock is of lower priority than the current thread.
+      // Therefore, we need to donate our priority.
+      thread_donate_priority(h, thread_current()->priority);
+    } else {
+      // Since we did not donate priority, we don't want to revoke our priority donation later.
+      // Therefore, forget about the current lock holder.
+      h = NULL;
+    }
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  if (h != NULL){
+    thread_revoke_priority(h, thread_current->priority);
+  }
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
