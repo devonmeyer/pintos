@@ -79,7 +79,8 @@ void thread_schedule_tail (struct thread *prev);
 static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 static struct thread *get_highest_priority_thread (void);
-static bool thread_has_highest_priority (struct thread *t);
+static bool thread_has_highest_priority (struct thread * t);
+static int get_priority_of_thread (struct thread * t);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -361,13 +362,24 @@ thread_set_priority (int new_priority)
   }
 }
 
-/* Returns the current thread's priority if it has not been given a donated
-   priority.  Otherwise, returns the top item from the thread's donated
-   priority stack. */
+/* Gets the priority of the current thread. */
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  return get_priority_of_thread (thread_current ());
+}
+
+/* Returns the current thread's priority if it has not been given a donated
+   priority.  Otherwise, returns the top item from the thread's donated
+   priority stack. */
+static int 
+get_priority_of_thread (struct thread * t) {
+  if (list_empty (&t->donated_priorities))
+    return t->priority;
+  else
+  {
+    return list_front (&t->donated_priorities);
+  }
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -488,7 +500,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-    t->wake_up_time = 0;
+  t->wake_up_time = 0;
+  list_init (&t->donated_priorities);
+
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -540,7 +554,7 @@ get_highest_priority_thread (void)
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, elem);
-      if (t->priority > highest->priority) {
+      if (get_priority_of_thread(t) > get_priority_of_thread(highest)) {
         highest = t;
       }
     }
@@ -560,7 +574,7 @@ thread_has_highest_priority (struct thread * t)
        e = list_next (e))
     {
       struct thread *ready_thread = list_entry (e, struct thread, elem);
-      if (ready_thread->priority > t->priority) {
+      if (get_priority_of_thread(ready_thread) > get_priority_of_thread (t)) {
         return false;
       }
     }
