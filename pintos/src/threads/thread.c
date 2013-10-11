@@ -78,6 +78,8 @@ void thread_sleep(int64_t start, int64_t duration);
 void thread_schedule_tail (struct thread *prev);
 static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
+static struct thread *get_highest_priority_thread (void);
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -512,7 +514,33 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return get_highest_priority_thread ();
+    //return list_entry (list_pop_front (&ready_list), struct thread, elem);
+}
+
+static struct thread *
+get_highest_priority_thread (void)
+{
+   struct list_elem *e;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+  ASSERT (!list_empty (&ready_list));
+
+  // Get the priority of the first thread in the list
+  struct thread * highest = list_entry (list_begin (&ready_list), struct thread, elem);
+  int prio = highest->priority;
+
+  for (e = list_begin (&ready_list); e != list_end (&ready_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, elem);
+      if (t->priority > prio) {
+        highest = t;
+        prio = t->priority;
+      }
+    }
+
+    return highest;
 }
 
 /* Completes a thread switch by activating the new thread's page
