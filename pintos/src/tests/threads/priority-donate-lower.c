@@ -42,6 +42,7 @@ test_priority_donate_lower (void)
 static void
 acquire_thread_func (void *lock_) 
 {
+  //msg ("entering into acquire thread!");
   struct lock *lock = lock_;
 
   lock_acquire (lock);

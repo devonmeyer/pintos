@@ -202,13 +202,13 @@ lock_acquire (struct lock *lock)
     if (get_priority_of_thread(h) < thread_get_priority()){
       // At this point we know that the thread holding the lock is of lower priority than the current thread.
       // Therefore, we need to donate our priority.
-      thread_donate_priority(h, thread_current()->priority);
+      thread_donate_priority(h, thread_get_priority());
       donated = true;
     }
   }
   sema_down (&lock->semaphore);
   if (donated){
-    thread_revoke_priority(h, thread_current()->priority);
+    thread_revoke_priority(h, thread_get_priority());
   }
   lock->holder = thread_current ();
   

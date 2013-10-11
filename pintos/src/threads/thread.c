@@ -214,7 +214,6 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
   return tid;
 }
 
@@ -374,13 +373,13 @@ thread_get_priority (void)
    priority stack. */
 int 
 get_priority_of_thread (struct thread * t) {
-  if (list_empty (&t->donated_priorities))
+  //if (list_empty (&t->donated_priorities))
     return t->priority;
-  else
-  {
-    struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
-    return pr->priority;
-  }
+  //else
+  //{
+  //  struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
+  //  return pr->priority;
+  //}
 }
 
 
@@ -734,6 +733,13 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+  //printf ("\n %s, %s, %s \n", prev->name, cur->name, next->name);
+  /*if (prev != NULL){
+    printf("\n prev: %s, %d", prev->name, get_priority_of_thread(prev));
+  }
+  if (cur->tid != next->tid){
+    printf("\n cur: %s, %d => next: %s, %d \n", cur->name, get_priority_of_thread(cur), next->name, get_priority_of_thread(next));
+  }*/
 }
 
 /* Returns a tid to use for a new thread. */
