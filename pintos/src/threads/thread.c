@@ -20,6 +20,12 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/* Values used for p.q floating point arithmetic. 
+   Represents P=17 digits before the decimal point,
+   and Q=14 digits after the decimal point.*/
+#define FLOATING_POINT_P 17
+#define FLOATING_POINT_Q 14
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -42,6 +48,10 @@ static struct thread *initial_thread;
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
+
+/* A value that estimates the average number of 
+   threads ready to run over the past minute. */
+static int load_avg;
 
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
@@ -80,6 +90,8 @@ static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 static struct thread *get_highest_priority_thread (void);
 static bool thread_has_highest_priority (struct thread * t);
+void update_load_avg (void);
+
 //static int get_priority_of_thread (struct thread * t);
 
 /* Initializes the threading system by transforming the code
@@ -112,6 +124,9 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  
+  /* Initialize the load_avg. */
+  load_avg = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -422,6 +437,23 @@ thread_revoke_priority (struct thread * t, int p){
 }
 
 
+/* Updates the system's load average. Called by timer.c. */
+void
+update_load_avg (void)
+{
+    // formula: load_avg = (59/60)*load_avg + (1/60)*ready_threads,
+    // annotated: load_avg = A * load_avg + B * ready_threads
+    int f = 1 << FLOATING_POINT_Q;
+    int fifty_nine_fp = 59 * f;
+    int one_fp = 1 * f;
+
+    int A = fifty_nine_fp / 60;
+    int B = one_fp / 60;
+
+    int num_ready_threads = list_size (&ready_list);
+}
+
+
 
 /* Sets the current thread's nice value to NICE. */
 void
@@ -443,7 +475,7 @@ int
 thread_get_load_avg (void) 
 {
   /* Not yet implemented. */
-  return 0;
+  return 100 * load_avg;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
