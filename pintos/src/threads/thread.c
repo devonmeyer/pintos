@@ -308,7 +308,7 @@ thread_exit (void)
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
-     
+
   intr_disable ();
   //lock_acquire (&all_list_lock);
   list_remove (&thread_current()->allelem);
@@ -421,7 +421,7 @@ thread_donate_priority (struct thread * t, struct thread * donator){
 */
 void
 thread_revoke_priority (struct thread * t, struct thread * revoker){
-  ASSERT(!list_empty(&t->donated_priorities));
+  //ASSERT(!list_empty(&t->donated_priorities));
   //ASSERT (intr_get_level () == INTR_OFF);
 
   struct list_elem *e;
