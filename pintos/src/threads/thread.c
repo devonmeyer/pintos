@@ -79,7 +79,6 @@ void thread_schedule_tail (struct thread *prev);
 static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 static struct thread *get_highest_priority_thread (void);
-static bool thread_has_highest_priority (struct thread * t);
 //static int get_priority_of_thread (struct thread * t);
 
 /* Initializes the threading system by transforming the code
@@ -214,6 +213,11 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+
+  if (!thread_has_highest_priority (thread_current ())) {
+    thread_yield ();
+  }
+
   return tid;
 }
 
@@ -373,12 +377,15 @@ thread_get_priority (void)
    priority stack. */
 int 
 get_priority_of_thread (struct thread * t) {
-  if (list_empty (&t->donated_priorities))
+  if (list_empty (&t->donated_priorities)){
     return t->priority;
-  else
-  {
+  } else {
     struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
-    return pr->priority;
+    if( pr->priority > t->priority ){
+      return pr->priority;
+    } else {
+      return t->priority;
+    }
   }
 }
 
@@ -390,9 +397,10 @@ get_priority_of_thread (struct thread * t) {
 */
 void
 thread_donate_priority (struct thread * t, int p){
+  ASSERT (intr_get_level () == INTR_OFF);
   struct prio * pr = malloc(sizeof(struct prio));
   pr->priority = p;
-  list_push_front(&t->donated_priorities, pr);
+  list_push_front(&t->donated_priorities, &pr->prio_elem);
 }
 
 
@@ -403,8 +411,9 @@ thread_donate_priority (struct thread * t, int p){
 */
 void
 thread_revoke_priority (struct thread * t, int p){
-  
   ASSERT(!list_empty(&t->donated_priorities));
+  ASSERT (intr_get_level () == INTR_OFF);
+
   struct list_elem *e;
 
   for (e = list_begin (&t->donated_priorities); e != list_end (&t->donated_priorities);
@@ -412,11 +421,10 @@ thread_revoke_priority (struct thread * t, int p){
     {
       struct prio *pr = list_entry (e, struct prio, prio_elem);
       if (pr->priority == p){
-        list_remove(e);
+        list_remove(&pr->prio_elem);
         return;
       }
     }
-
 }
 
 
@@ -611,7 +619,7 @@ get_highest_priority_thread (void)
   return highest;
 }
 
-static bool
+bool
 thread_has_highest_priority (struct thread * t)
 {
   struct list_elem *e;

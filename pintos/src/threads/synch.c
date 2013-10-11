@@ -197,6 +197,8 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread * h = lock->holder;
   bool donated = false;
+  enum intr_level old_level;
+  old_level = intr_disable ();
   if (h != NULL){
     // At this point we know that there is a thread, not the current thread, holding the lock.
     if (get_priority_of_thread(h) < thread_get_priority()){
@@ -206,12 +208,14 @@ lock_acquire (struct lock *lock)
       donated = true;
     }
   }
+  intr_set_level (old_level);
   sema_down (&lock->semaphore);
+  lock->holder = thread_current ();
+  old_level = intr_disable();
   if (donated){
     thread_revoke_priority(h, thread_get_priority());
   }
-  lock->holder = thread_current ();
-  
+  intr_set_level(old_level);
 
 }
 
@@ -248,6 +252,9 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  if (!thread_has_highest_priority (thread_current ())) {
+    thread_yield ();
+  }
 }
 
 /* Returns true if the current thread holds LOCK, false

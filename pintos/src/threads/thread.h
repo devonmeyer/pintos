@@ -155,6 +155,7 @@ int get_priority_of_thread (struct thread * t);
 void thread_donate_priority (struct thread * t, int);
 void thread_revoke_priority (struct thread * t, int);
 
+bool thread_has_highest_priority (struct thread * t);
 
 
 int thread_get_nice (void);

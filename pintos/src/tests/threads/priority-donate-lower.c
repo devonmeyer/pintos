@@ -26,8 +26,12 @@ test_priority_donate_lower (void)
   lock_init (&lock);
   lock_acquire (&lock);
   thread_create ("acquire", PRI_DEFAULT + 10, acquire_thread_func, &lock);
+  //msg ("blah blah blah");
   msg ("Main thread should have priority %d.  Actual priority: %d.",
        PRI_DEFAULT + 10, thread_get_priority ());
+  //msg ("Number of priority donations %d", list_size( &thread_current()->donated_priorities));
+  //msg ("Priority of first element of list %d, thread_get_prio %d", list_entry (list_front (&thread_current()->donated_priorities), struct prio, prio_elem)->priority, thread_get_priority());
+
 
   msg ("Lowering base priority...");
   thread_set_priority (PRI_DEFAULT - 10);
