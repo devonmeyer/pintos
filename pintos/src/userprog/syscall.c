@@ -16,10 +16,10 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   printf ("system call!\n");
-  switch(f->esp){
+  int num = f->esp;
+  switch(num){
   	case SYS_HALT:
   		print_okay();
-  		printf("AKLSJD"asdf);
   		break;
     case SYS_EXIT:
     	break;
@@ -50,7 +50,7 @@ syscall_handler (struct intr_frame *f)
   }
 }
 
-static void
+void
 print_okay(void){
 	printf("Got a system call that I expected!\n");
 }
