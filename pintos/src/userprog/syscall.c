@@ -16,12 +16,15 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   printf ("system call!\n");
-  int num = f->esp;
-  switch(num){
+  int * num = f->esp;
+  switch(*num){
   	case SYS_HALT:
   		print_okay();
+  		thread_exit();
   		break;
     case SYS_EXIT:
+    	print_okay();
+    	thread_exit();
     	break;
     case SYS_EXEC:
     	break;
