@@ -189,15 +189,38 @@ lock_init (struct lock *lock)
    interrupt handler.  This function may be called with
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
+
+
+   /*
+
+  Additions to lock_acquire for priority donation...
+
+  We want to first determine if priority donation is necessary
+    there is a thread currently holding the lock
+    the thread holding the lock has a lower priority than the current thread
+
+  If so, we donate our own priority.
+
+   */
 void
 lock_acquire (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+  struct thread * h = lock->holder;
+  enum intr_level old_level = intr_disable();
+  if (h != NULL){
+    // At this point we know that there is a thread, not the current thread, holding the lock.
+    if (get_priority_of_thread(h) < thread_get_priority()){
+      // At this point we know that the thread holding the lock is of lower priority than the current thread.
+      // Therefore, we need to donate our priority.
+      thread_donate_priority(h, thread_current());
+    }
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  intr_set_level(old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -225,14 +248,48 @@ lock_try_acquire (struct lock *lock)
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to release a lock within an interrupt
    handler. */
+
+
+/*
+
+  Changes made for priority donation
+
+  When a lock is released, we need to ensure that the thread who releases it returns to the
+  priority that it belongs to.
+
+  The priority that it belongs to is determined by revoking the donated priority by every
+  single thread that donated priority on this lock. In order to do that, we pass each thread waiting on the lock
+  into the thread_revoke_priority() method so that the releasing thread can return to its original priority.
+
+  Finally, we have to ensure that the current thread does not continue to act if it is not the highest
+  priority thread.
+
+*/
 void
 lock_release (struct lock *lock) 
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+  struct thread * possible_donator = NULL;
   lock->holder = NULL;
+  enum intr_level old_level = intr_disable();
+  if (!list_empty (&lock->semaphore.waiters)){
+    possible_donator = list_entry (list_front (&lock->semaphore.waiters), struct thread, elem);
+  }
   sema_up (&lock->semaphore);
+  if(possible_donator != NULL){    
+    thread_revoke_priority(thread_current(), possible_donator);
+    struct list_elem *e;
+    for (e = list_begin (&lock->semaphore.waiters); e != list_end (&lock->semaphore.waiters); e = list_next (e)) {
+      struct thread *t = list_entry (e, struct thread, elem);
+      thread_revoke_priority(thread_current(), t);
+    }
+  }
+  if (!thread_has_highest_priority (thread_current ())) {
+    thread_yield ();
+  }
+  intr_set_level(old_level);
+
 }
 
 /* Returns true if the current thread holds LOCK, false

@@ -78,6 +78,8 @@ void thread_sleep(int64_t start, int64_t duration);
 void thread_schedule_tail (struct thread *prev);
 static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
+static struct thread *get_highest_priority_thread (void);
+//static int get_priority_of_thread (struct thread * t);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -212,6 +214,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  if (!thread_has_highest_priority (thread_current ())) {
+    thread_yield ();
+  }
+
   return tid;
 }
 
@@ -302,6 +308,7 @@ thread_exit (void)
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
+
   intr_disable ();
   //lock_acquire (&all_list_lock);
   list_remove (&thread_current()->allelem);
@@ -313,6 +320,7 @@ thread_exit (void)
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
+
 void
 thread_yield (void) 
 {
@@ -334,6 +342,7 @@ thread_yield (void)
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
+
 void
 thread_foreach (thread_action_func *func, void *aux)
 {
@@ -350,18 +359,85 @@ thread_foreach (thread_action_func *func, void *aux)
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
+
 void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if (!thread_has_highest_priority (thread_current ())) {
+    thread_yield ();
+  }
 }
 
-/* Returns the current thread's priority. */
+/* Gets the priority of the current thread. */
+
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  return get_priority_of_thread (thread_current ());
 }
+
+/* Returns the current thread's priority if it has not been given a donated
+   priority.  Otherwise, returns the top item from the thread's donated
+   priority stack. */
+
+int 
+get_priority_of_thread (struct thread * t) {
+  if (list_empty (&t->donated_priorities)){
+    return t->priority;
+  } else {
+    struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
+    if( pr->priority > t->priority ){
+      return pr->priority;
+    } else {
+      return t->priority;
+    }
+  }
+}
+
+
+/*
+
+  Add p to the thread t's stack of donated priorities by creating a prio_element and adding it
+  to the stack of donated priorities.
+
+*/
+void
+thread_donate_priority (struct thread * t, struct thread * donator){
+  //ASSERT (intr_get_level () == INTR_OFF);
+  struct prio * pr = malloc(sizeof(struct prio));
+  pr->donator = donator;
+  pr->priority = get_priority_of_thread(donator);
+  list_push_front(&t->donated_priorities, &pr->prio_elem);
+}
+
+
+/*
+
+  Remove revoker from the thread's stack of donated priorities.
+
+  Essentially, find the priority donation that was given to t by revoker, and remove it.
+
+*/
+void
+thread_revoke_priority (struct thread * t, struct thread * revoker){
+  //ASSERT(!list_empty(&t->donated_priorities));
+  //ASSERT (intr_get_level () == INTR_OFF);
+
+  struct list_elem *e;
+
+  for (e = list_begin (&t->donated_priorities); e != list_end (&t->donated_priorities);
+       e = list_next (e))
+    {
+      struct prio *pr = list_entry (e, struct prio, prio_elem);
+      if (pr->donator == revoker){
+        list_remove(&pr->prio_elem);
+        return;
+      }
+    }
+}
+
+
 
 /* Sets the current thread's nice value to NICE. */
 void
@@ -481,7 +557,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-    t->wake_up_time = 0;
+  t->wake_up_time = 0;
+  list_init (&t->donated_priorities);
+
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -512,7 +590,77 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return get_highest_priority_thread ();
+    //return list_entry (list_pop_front (&ready_list), struct thread, elem);
+}
+
+/*
+
+  Returns the highest priority ready thread, and removes it from the ready list.
+
+  Called by next_thread_to_run()
+
+*/
+
+
+static struct thread *
+get_highest_priority_thread (void)
+{
+  struct list_elem *e;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+  
+  // This assertion added by us
+  ASSERT (!list_empty (&ready_list));
+
+  // Get the priority of the first thread in the list
+  struct thread * highest = NULL;
+
+  for (e = list_begin (&ready_list); e != list_end (&ready_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, elem);
+      if (t->status == THREAD_READY){
+        if (highest == NULL){
+          highest = t;
+        } else {
+          if (get_priority_of_thread(t) > get_priority_of_thread(highest)) {
+            highest = t;
+          }
+        }
+      }
+    }
+  if(highest == NULL){
+    return idle_thread;
+  }
+  list_remove(&highest->elem); // remove the highest priority thread from the ready list (we used to "pop" it off)
+
+  return highest;
+}
+
+/*
+
+  This method returns true if the current-running thread is the highest priority.
+  Used whenever a new thread is added to the ready queue, to determine if we should yield the processor to that new thread.
+
+*/
+
+bool
+thread_has_highest_priority (struct thread * t)
+{
+  struct list_elem *e;
+
+  // Compare the priority of the current thread with the threads in the ready list
+  for (e = list_begin (&ready_list); e != list_end (&ready_list);
+       e = list_next (e))
+    {
+      struct thread *ready_thread = list_entry (e, struct thread, elem);
+      if ((get_priority_of_thread(ready_thread) >= get_priority_of_thread (t)) && (ready_thread->status == THREAD_READY)) {
+        return false;
+      }
+    }
+
+  return true;
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -626,6 +774,13 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+  //printf ("\n %s, %s, %s \n", prev->name, cur->name, next->name);
+  /*if (prev != NULL){
+    printf("\n prev: %s, %d", prev->name, get_priority_of_thread(prev));
+  }
+  if (cur->tid != next->tid){
+    printf("\n cur: %s, %d => next: %s, %d \n", cur->name, get_priority_of_thread(cur), next->name, get_priority_of_thread(next));
+  }*/
 }
 
 /* Returns a tid to use for a new thread. */

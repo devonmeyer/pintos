@@ -95,6 +95,8 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    struct list donated_priorities;       /* The list of donated priorities. (int's) */
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -103,6 +105,19 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
+/*
+
+List element for priorities.
+
+*/
+
+struct prio {
+  struct list_elem prio_elem;
+  int priority;
+  struct thread * donator;
+};
+
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -134,6 +149,15 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+int get_priority_of_thread (struct thread * t);
+
+
+void thread_donate_priority (struct thread * t, struct thread * donator);
+void thread_revoke_priority (struct thread * t, struct thread * revoker);
+
+bool thread_has_highest_priority (struct thread * t);
+
 
 int thread_get_nice (void);
 void thread_set_nice (int);
