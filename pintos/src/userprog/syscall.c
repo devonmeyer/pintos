@@ -4,8 +4,11 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/pte.h"
 
 static void syscall_handler (struct intr_frame *);
+static void system_open(void);
+static bool is_valid_memory_access(int *vaddr);
 
 void
 syscall_init (void) 
@@ -36,6 +39,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_REMOVE:
     	break;
     case SYS_OPEN:
+    	system_open();
     	break;
     case SYS_FILESIZE:
     	break;
@@ -65,15 +69,32 @@ print_okay(void){
 */
 static void
 system_open(void){
-	int *vaddr = f->esp - (1 * (size_of(int))); // The first argument in 
+	int vaddr = &(f->esp) - (1 * (size_of(int))); // The first argument in the interupt frame
 
-	if (*vaddr == 0) { // Null Pointer
+	if (is_valid_memory_access(vaddr)) {
+		// Dereference the pointer
+		f->eax = *vaddr;
+	}	
+}
 
-	} else if () { // Pointer to Unmapped Virtual Memory
-
-	} else if (is_kernel_vaddr(vaddr)) { // Pointer to Kernel Virtual Address Space
+/* 
+	Returns true if the memory address is valid and can be accessed by the user process.
+*/
+static bool
+is_valid_memory_access(int *vaddr) {
+	if (&vaddr == 0) {
+		// Null Pointer
+		return false;
+	else if (is_kernel_vaddr(vaddr)) { 
+		// Pointer to Kernel Virtual Address Space
+		return false;
 		
+	} else if (pagedir_get_page(pd_no(vaddr),vaddr) == NULL) { 
+		// Pointer to Unmapped Virtual Memory
+		return false;
 	}
+
+	return true;
 }
 
 
