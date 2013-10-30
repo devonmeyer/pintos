@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -54,3 +55,26 @@ void
 print_okay(void){
 	printf("Got a system call that I expected!\n");
 }
+
+
+/* 
+	The method called when the SYS_OPEN is called. Format: open (VIRTUAL_ADDRESS).
+*/
+static void
+system_open(void){
+	int *vaddr = f->esp - (1 * (size_of(int))); // The first argument in 
+
+	if (*vaddr == 0) { // Null Pointer
+
+	} else if () { // Pointer to Unmapped Virtual Memory
+
+	} else if (is_kernel_vaddr(vaddr)) { // Pointer to Kernel Virtual Address Space
+		
+	}
+}
+
+
+
+
+
+
