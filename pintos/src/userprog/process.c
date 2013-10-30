@@ -20,8 +20,9 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
-static char* parse_process_name (const char *cmdline);
+static const char* parse_process_name (const char *cmdline);
 static char** parse_process_args(const char *cmdline);
+static void push_process_args(char **args, void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -42,7 +43,7 @@ process_execute (const char *cmdline)
 
   /* Parse process name from command line input 
      and pass it to thread_create */
-  char *process_name = parse_process_name(cmdline); 
+  const char *process_name = parse_process_name(cmdline); 
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
@@ -54,14 +55,16 @@ process_execute (const char *cmdline)
 /* Parses the first argument from the command line input,
    which should be the process name and returns it
 */
-static char* 
+static const char* 
 parse_process_name (const char *cmdline)
 {
-  char *input = cmdline; // Discards const
-  const char *delimiters = ' ';
-  char **save_ptr; // Address used to keep track of tokenizer's position
+  char *input = malloc(sizeof(char*));
+  strlcpy(input, cmdline, sizeof(cmdline));
+  const char *delimiters = " ";
+  char *save_ptr; // Address used to keep track of tokenizer's position
   
-  char *process_name = strtok_r(input, delimiters, save_ptr);
+  const char *process_name = strtok_r(input, delimiters, &save_ptr);
+  free(input);
   return process_name;
 }
 
@@ -71,11 +74,12 @@ parse_process_name (const char *cmdline)
 static char**
 parse_process_args(const char *cmdline)
 {
-  char *input = cmdline;
-  const char *delimiters = ' ';
-  char **save_ptr; // Address used to keep track of tokenizer's position
+  char *input = malloc(sizeof(char*));
+  strlcpy(input, cmdline, sizeof(cmdline));
+  const char *delimiters = " ";
+  char *save_ptr; // Address used to keep track of tokenizer's position
   
-  char **args = (char**) malloc(sizeof(cmdline));
+  char **args = malloc(sizeof(cmdline));
   char *token = strtok_r(input, delimiters, &save_ptr); // Parse process name
   token = strtok_r(NULL, delimiters, &save_ptr); // Iterate to first argument
   
@@ -86,7 +90,19 @@ parse_process_args(const char *cmdline)
       token = strtok_r(NULL, delimiters, &save_ptr);
     }
   }
+  free(input);
   return args;
+}
+
+/* Pushes arguments parsed from the command line onto the user stack */
+static void 
+push_process_args(char **args, void **esp)
+{
+  int i;
+  for(i = 0; args[i] != NULL; i++) {
+    // Push args onto esp here
+  }
+  free(args);
 }
 
 /* A thread function that loads a user process and starts it
@@ -250,7 +266,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (const char *cmdline, void (**eip) (void), void **esp) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -266,6 +282,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
+  const char *file_name = parse_process_name(cmdline);
   file = filesys_open (file_name);
   if (file == NULL) 
     {
@@ -351,6 +368,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
+
+  char **args = parse_process_args(cmdline);
+  if(args[0] != NULL) {
+    push_process_args(args, esp);
+  }
 
   success = true;
 
