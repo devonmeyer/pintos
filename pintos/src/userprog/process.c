@@ -21,8 +21,9 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static const char* parse_process_name (const char *cmdline);
-static char** parse_process_args(const char *cmdline);
-static void push_process_args(char **args, void **esp);
+static void parse_process_args(const char *cmdline, int argc, char **argv);
+static void push_process_args(int argc, char **argv, void **esp);
+static void push_onto_user_stack (void *value, void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -58,51 +59,74 @@ process_execute (const char *cmdline)
 static const char* 
 parse_process_name (const char *cmdline)
 {
-  char *input = malloc(sizeof(char*));
-  strlcpy(input, cmdline, sizeof(cmdline));
+  char *input;
+  strlcpy(input, cmdline, sizeof(PGSIZE)); // Create a copy of input to maintain state of original
   const char *delimiters = " ";
   char *save_ptr; // Address used to keep track of tokenizer's position
   
   const char *process_name = strtok_r(input, delimiters, &save_ptr);
-  free(input);
   return process_name;
 }
 
 /* Parses the remaining arguments from the command line input,
-   which should be the process arguments and returns them
+   which should be the process arguments
 */
-static char**
-parse_process_args(const char *cmdline)
+static void
+parse_process_args(const char *cmdline, int argc, char **argv)
 {
-  char *input = malloc(sizeof(char*));
-  strlcpy(input, cmdline, sizeof(cmdline));
+  char *input;
+  strlcpy(input, cmdline, sizeof(PGSIZE)); // Create a copy of input to maintain state of original
   const char *delimiters = " ";
   char *save_ptr; // Address used to keep track of tokenizer's position
   
-  char **args = malloc(sizeof(cmdline));
   char *token = strtok_r(input, delimiters, &save_ptr); // Parse process name
   token = strtok_r(NULL, delimiters, &save_ptr); // Iterate to first argument
   
+  /* Parse arguments from left to right and store each as an element in argv */
   if(token != NULL) {
-    int i;
-    for(i = 0; token != NULL; i++) {
-      args[i] = token;
+    for(argc = 0; token != NULL; argc++) {
+      strlcpy(argv[argc], token, sizeof(token));
       token = strtok_r(NULL, delimiters, &save_ptr);
     }
+  } else { // If there are no arguments
+    argc = 0;
+    argv = NULL;
   }
-  free(input);
-  return args;
 }
 
 /* Pushes arguments parsed from the command line onto the user stack */
 static void 
-push_process_args(char **args, void **esp)
+push_process_args(int argc, char **argv, void **esp)
 {
   int i;
-  for(i = 0; args[i] != NULL; i++) {
-    // Push args onto esp here
+  for(i = argc - 1; i >= 0; i++) {
+    push_onto_user_stack(argv[i], esp);
   }
-  free(args);
+  
+  uint8_t word_align = 0;
+  push_onto_user_stack(word_align, esp);
+  
+  for(i = argc; i >= 0; i++) {
+    push_onto_user_stack(&argv[i], esp);
+  }
+  
+  push_onto_user_stack(argv, esp);
+  push_onto_user_stack(argc, esp);
+  
+  void *return_address = 0;
+  push_onto_user_stack(return_address, esp);
+
+  free(argv);
+}
+
+static void 
+push_onto_user_stack (void *value, void **esp) 
+{
+  if(false) {
+    return;
+  } else {
+    // push onto stack
+  }
 }
 
 /* A thread function that loads a user process and starts it
@@ -369,9 +393,13 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
-  char **args = parse_process_args(cmdline);
-  if(args[0] != NULL) {
-    push_process_args(args, esp);
+  int argc = 0;
+  char **argv = malloc(sizeof(PGSIZE));
+  parse_process_args(cmdline, argc, argv);
+  if(argc > 0) {
+    push_process_args(argc, argv, esp);
+  } else {
+    // init_user_stack()
   }
 
   success = true;
