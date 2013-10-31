@@ -69,12 +69,12 @@ print_okay(void){
 */
 static void
 system_open(void){
-	int vaddr = &(f->esp) - (1 * (size_of(int))); // The first argument in the interupt frame
+	// int vaddr = &(f->esp) - (1 * (size_of(int))); // The first argument in the interupt frame
 
-	if (is_valid_memory_access(vaddr)) {
-		// Dereference the pointer
-		f->eax = *vaddr;
-	}	
+	// if (is_valid_memory_access(vaddr)) {
+	// 	// Dereference the pointer
+	// 	f->eax = *vaddr;
+	// }	
 }
 
 /* 
@@ -82,19 +82,19 @@ system_open(void){
 */
 static bool
 is_valid_memory_access(int *vaddr) {
-	if (&vaddr == 0) {
-		// Null Pointer
-		return false;
-	else if (is_kernel_vaddr(vaddr)) { 
-		// Pointer to Kernel Virtual Address Space
-		return false;
+	// if (&vaddr == 0) {
+	// 	// Null Pointer
+	// 	return false;
+	// else if (is_kernel_vaddr(vaddr)) { 
+	// 	// Pointer to Kernel Virtual Address Space
+	// 	return false;
 		
-	} else if (pagedir_get_page(pd_no(vaddr),vaddr) == NULL) { 
-		// Pointer to Unmapped Virtual Memory
-		return false;
-	}
+	// } else if (pagedir_get_page(pd_no(vaddr),vaddr) == NULL) { 
+	// 	// Pointer to Unmapped Virtual Memory
+	// 	return false;
+	// }
 
-	return true;
+	// return true;
 }
 
 
