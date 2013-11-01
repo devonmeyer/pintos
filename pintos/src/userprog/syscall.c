@@ -42,6 +42,7 @@ syscall_handler (struct intr_frame *f)
     	break;
     case SYS_OPEN:
     	system_open(f);
+      thread_exit();
     	break;
     case SYS_FILESIZE:
     	break;
@@ -71,7 +72,7 @@ print_okay(void){
 */
 static void
 system_open(struct intr_frame *f){
-	const void *vaddr = (f->esp) - (1 * (sizeof(int))); // The first argument in the interupt frame
+	void *vaddr = ((int) (f->esp)) + 1; // The first argument in the interupt frame
 
 	if (is_valid_memory_access(vaddr)) {
 		// right:
@@ -84,11 +85,12 @@ system_open(struct intr_frame *f){
 		// ... --> Physical address --> Data stored at that physical address
 
 		char *paddr = pagedir_get_page(thread_current ()->pagedir,vaddr);
-		*f->eax = *paddr; // something like this
-		f->eax = paddr; // Dereference the pointer! ---> LOOK FOR FUNCTION THAT LETS YOU READ DIRECTLY FROM PHYS ADDR
-		// need to increment the stack pointer after this
+		//*f->eax = *paddr; // something like this
+		*f->eax = *paddr; // Does this mean "return the value stored at paddr to the stack" ?
+    f->eax--; // "Increment" the stack pointer (We subtract here because it grows DOWN)
 	} else {
 		process_exit ();
+    *f->eax = -1; // Returns a file descriptor of -1
 	}
 }
 	
