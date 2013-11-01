@@ -74,11 +74,19 @@ system_open(struct intr_frame *f){
 	const void *vaddr = (f->esp) - (1 * (sizeof(int))); // The first argument in the interupt frame
 
 	if (is_valid_memory_access(vaddr)) {
+		// right:
+		// User va -> Physical Address
+
+		// cast paddr to a char * then do *paddr
+
+		// wrong:
 		// User virtual address --> Kernal virtual address ...
 		// ... --> Physical address --> Data stored at that physical address
 
-		uintptr_t paddr = vtop (pagedir_get_page(thread_current ()->pagedir,vaddr));
-		f->eax = paddr; // Dereference the pointer!
+		char *paddr = pagedir_get_page(thread_current ()->pagedir,vaddr);
+		*f->eax = *paddr; // something like this
+		f->eax = paddr; // Dereference the pointer! ---> LOOK FOR FUNCTION THAT LETS YOU READ DIRECTLY FROM PHYS ADDR
+		// need to increment the stack pointer after this
 	} else {
 		process_exit ();
 	}
