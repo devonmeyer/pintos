@@ -106,7 +106,7 @@ struct thread
     struct fd_info {
       int size; 
       // size, name, begin addr, offset, etc. look at wherever the FD is stored later
-    }
+    };
     struct fd_info fd_array[1000];       /* The array of file descriptors */
 #endif
 
