@@ -72,25 +72,30 @@ print_okay(void){
 */
 static void
 system_open(struct intr_frame *f){
-	void *vaddr = ((int) (f->esp)) + 1; // The first argument in the interupt frame
+	void *vaddr = ((int) (f->esp)) + 1; // The first argument in the interrupt frame
 
 	if (is_valid_memory_access(vaddr)) {
-		// right:
-		// User va -> Physical Address
+		// User Virtual Address -> Kernel Virtual Address -> Physical Address
 
-		// cast paddr to a char * then do *paddr
+    struct thread *t = thread_current ();
+		char *kvaddr = pagedir_get_page(t->pagedir,vaddr); 
+ 
+   // char val = *kvaddr; // DEREFERENCING (try & debug)
 
-		// wrong:
-		// User virtual address --> Kernal virtual address ...
-		// ... --> Physical address --> Data stored at that physical address
+    ASSERT (t->fd_counter > 1); // FD's of 0 and 1 are RESERVED
 
-		char *paddr = pagedir_get_page(thread_current ()->pagedir,vaddr);
-		//*f->eax = *paddr; // something like this
-		*f->eax = *paddr; // Does this mean "return the value stored at paddr to the stack" ?
-    f->eax--; // "Increment" the stack pointer (We subtract here because it grows DOWN)
+    // TO BE IMPLEMENTED LATER:
+    //struct fd_info fdi = ... fill in the struct
+    //t->fd_array[t->fd_counter] = fdi;
+
+    f->eax = t->fd_counter;
+    t->fd_counter++;
+    
+    // wrong:
+    //f->eax--; // "Increment" the stack pointer (We subtract here because the stack grows DOWN)
 	} else {
-		process_exit ();
-    *f->eax = -1; // Returns a file descriptor of -1
+    f->eax = -1; // Returns a file descriptor of -1
+    process_exit ();
 	}
 }
 	
