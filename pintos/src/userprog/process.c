@@ -402,14 +402,14 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
-  int argc = 0;
-  char *argv[PGSIZE];
-  parse_process_args(cmdline, &argc, argv);
-  if(argc > 0) {
-    push_process_args(argc, argv, esp);
-  } else {
-    // init_user_stack() 
-  }
+  // int argc = 0;
+  // char *argv[PGSIZE];
+  // parse_process_args(cmdline, &argc, argv);
+  // if(argc > 0) {
+  //   push_process_args(argc, argv, esp);
+  // } else {
+  //   // init_user_stack() 
+  // }
 
   success = true;
 
