@@ -560,9 +560,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->wake_up_time = 0;
   list_init (&t->donated_priorities);
 
-#ifdef USERPROG
-  t->fd_counter = 2; // File descriptor values of 0 and 1 are RESERVED, so we begin at 2
-#endif
+// #ifdef USERPROG
+//   t->fd_counter = 2; // File descriptor values of 0 and 1 are RESERVED, so we begin at 2
+// #endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

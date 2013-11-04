@@ -94,7 +94,7 @@ system_open(struct intr_frame *f){
  
    // char val = *kvaddr; // DEREFERENCING (try & debug)
 
-    ASSERT (t->fd_counter > 1); // FD's of 0 and 1 are RESERVED
+   /* ASSERT (t->fd_counter > 1); // FD's of 0 and 1 are RESERVED
 
     // TO BE IMPLEMENTED LATER:
     //struct fd_info fdi = ... fill in the struct
@@ -102,7 +102,7 @@ system_open(struct intr_frame *f){
 
     f->eax = t->fd_counter;
     t->fd_counter++;
-    
+    */
     // wrong:
     //f->eax--; // "Increment" the stack pointer (We subtract here because the stack grows DOWN)
 	} else {
