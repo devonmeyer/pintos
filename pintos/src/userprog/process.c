@@ -47,7 +47,8 @@ process_execute (const char *cmdline)
   const char *process_name = parse_process_name(fn_copy); 
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (cmdline, PRI_DEFAULT, start_process, (void*)process_name);
+  // tid = thread_create (cmdline, PRI_DEFAULT, start_process, (void*)process_name);
+  tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -538,7 +539,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12; // Changed to - 12 for testing purposes
       else
         palloc_free_page (kpage);
     }
