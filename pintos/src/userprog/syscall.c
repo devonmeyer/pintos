@@ -15,7 +15,7 @@ static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static void system_open(struct intr_frame *f);
 static void system_write(struct intr_frame *f);
 
-#define WRITE_CHUNK_SIZE 300;
+#define WRITE_CHUNK_SIZE 300
 
 void
 syscall_init (void) 
