@@ -13,7 +13,7 @@ static bool is_valid_memory_access(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static void system_open(struct intr_frame *f);
-static void system_write(struct intr_frame *f);
+static void system_write(struct intr_frame *f, int * arguments);
 
 #define WRITE_CHUNK_SIZE 300
 
@@ -29,13 +29,15 @@ syscall_handler (struct intr_frame *f)
   printf ("system call!\n");
   int * num = f->esp;
   int arguments[3];
+  printf ("System call is %d", *num);
   switch(*num){
   	case SYS_HALT:
   		print_okay();
   		thread_exit();
   		break;
     case SYS_EXIT:
-    	get_arguments(f, 0, arguments);
+      print_okay();
+    	get_arguments(f, 1, arguments);
     	thread_exit();
       // Need to set f->eax to arguments[0]
     	break;
@@ -48,6 +50,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_REMOVE:
     	break;
     case SYS_OPEN:
+      print_okay();
     	system_open(f);
       thread_exit();
     	break;
@@ -56,7 +59,9 @@ syscall_handler (struct intr_frame *f)
     case SYS_READ:
     	break;
     case SYS_WRITE:
-      system_write(f);
+      print_okay();
+      get_arguments(f, 3, arguments);
+      system_write(f, arguments);
       thread_exit();
     	break;
     case SYS_SEEK:
@@ -123,17 +128,16 @@ system_open(struct intr_frame *f){
   int write (int fd, const void *buffer, unsigned size)
 */
 static void
-system_write(struct intr_frame *f){
+system_write(struct intr_frame *f, int * arguments){
   // Assumes that items are pushed onto the stack from right to left
-  int fd = ((int) (f->esp)) + 1; 
-  const void *buffer = ((int) (f->esp)) + 2;
-  uint32_t size = ((void*) (buffer)) + 1;
+  int fd = ((int) arguments[0]); 
+  const void *buffer = ((void *) arguments[1]);
+  unsigned size = ((void*) arguments[2]);
 
 if (is_valid_memory_access (buffer) == false) {
     f->eax = -1; // Returns a file descriptor of -1 ->>>>> Is this correct???
     process_exit ();
 }
-
   // putbuf (const char *buffer, size_t n), defined in console.c
   ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
 
