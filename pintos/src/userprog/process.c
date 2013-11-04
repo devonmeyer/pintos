@@ -176,7 +176,7 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   // TEMPORARY, FOR TESTING PURPOSES:
-  while (0) {
+  while (1) {
 
   }
   

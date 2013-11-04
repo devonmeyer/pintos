@@ -25,6 +25,13 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+
+// /* The information associated with each file descriptor. */
+    struct fd_info {
+       int size; 
+    //   // size, name, begin addr, offset, etc. look at wherever the FD is stored later
+    };
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -100,19 +107,18 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    //uint32_t pid; // might not need this
-    // uint32_t fd_counter;      /* A counter used to keep track of the number of file descriptors. */
-    // /* The information associated with each file descriptor. */
-    // struct fd_info {
-    //   int size; 
-    //   // size, name, begin addr, offset, etc. look at wherever the FD is stored later
-    // };
-    // struct fd_info fd_array[1000];       /* The array of file descriptors */
 #endif
+
+    //uint32_t pid; // might not need this
+    //uint32_t fd_counter;      /* A counter used to keep track of the number of file descriptors. */
+    
+    //struct fd_info fd_array[1000];       /* The array of file descriptors */
+
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
 
 
 
