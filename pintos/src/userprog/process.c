@@ -47,8 +47,8 @@ process_execute (const char *cmdline)
   const char *process_name = parse_process_name(fn_copy); 
 
   /* Create a new thread to execute FILE_NAME. */
-  // tid = thread_create (cmdline, PRI_DEFAULT, start_process, (void*)process_name);
-  tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (cmdline, PRI_DEFAULT, start_process, (void*)process_name);
+  // tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -85,6 +85,7 @@ parse_process_args(const char *cmdline, int *argc, char **argv)
   if(token != NULL) {
     for(*argc = 0; token != NULL; *argc++) {
       strlcpy(argv[*argc], token, sizeof(token));
+      printf("Argument: %s\n", argv[*argc]);
       token = strtok_r(NULL, delimiters, &save_ptr);
     }
   } else { // If there are no arguments
@@ -401,14 +402,14 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
-  int argc = 0;
-  char *argv[PGSIZE];
-  parse_process_args(cmdline, &argc, argv);
-  if(argc > 0) {
-    push_process_args(argc, argv, esp);
-  } else {
-    // init_user_stack() 
-  }
+  // int argc = 0;
+  // char *argv[PGSIZE];
+  // parse_process_args(cmdline, &argc, argv);
+  // if(argc > 0) {
+  //   push_process_args(argc, argv, esp);
+  // } else {
+  //   // init_user_stack() 
+  // }
 
   success = true;
 
