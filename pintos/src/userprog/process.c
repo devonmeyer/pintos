@@ -20,8 +20,8 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
-static const char* parse_process_name (const char *cmdline);
-static void parse_process_args(const char *cmdline, int argc, char **argv);
+static char* parse_process_name (char *cmdline);
+static void parse_process_args(const char *cmdline, int *argc, char **argv);
 static void push_process_args(int argc, char **argv, void **esp);
 static void push_onto_user_stack (void *value, void **esp);
 
@@ -44,10 +44,11 @@ process_execute (const char *cmdline)
 
   /* Parse process name from command line input 
      and pass it to thread_create */
-  const char *process_name = parse_process_name(cmdline); 
+  const char *process_name = parse_process_name(fn_copy); 
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
+  // tid = thread_create (cmdline, PRI_DEFAULT, start_process, (void*)process_name);
+  tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -56,15 +57,13 @@ process_execute (const char *cmdline)
 /* Parses the first argument from the command line input,
    which should be the process name and returns it
 */
-static const char* 
-parse_process_name (const char *cmdline)
+static char* 
+parse_process_name (char *cmdline)
 {
-  char *input;
-  strlcpy(input, cmdline, sizeof(PGSIZE)); // Create a copy of input to maintain state of original
   const char *delimiters = " ";
   char *save_ptr; // Address used to keep track of tokenizer's position
   
-  const char *process_name = strtok_r(input, delimiters, &save_ptr);
+  char *process_name = strtok_r(cmdline, delimiters, &save_ptr);
   return process_name;
 }
 
@@ -72,9 +71,9 @@ parse_process_name (const char *cmdline)
    which should be the process arguments
 */
 static void
-parse_process_args(const char *cmdline, int argc, char **argv)
+parse_process_args(const char *cmdline, int *argc, char **argv)
 {
-  char *input;
+  char input[PGSIZE];
   strlcpy(input, cmdline, sizeof(PGSIZE)); // Create a copy of input to maintain state of original
   const char *delimiters = " ";
   char *save_ptr; // Address used to keep track of tokenizer's position
@@ -84,13 +83,13 @@ parse_process_args(const char *cmdline, int argc, char **argv)
   
   /* Parse arguments from left to right and store each as an element in argv */
   if(token != NULL) {
-    for(argc = 0; token != NULL; argc++) {
-      strlcpy(argv[argc], token, sizeof(token));
+    for(*argc = 0; token != NULL; *argc++) {
+      strlcpy(argv[*argc], token, sizeof(token));
       token = strtok_r(NULL, delimiters, &save_ptr);
     }
   } else { // If there are no arguments
-    argc = 0;
-    argv = NULL;
+    *argc = 0;
+    // argv = NULL;
   }
 }
 
@@ -100,7 +99,9 @@ push_process_args(int argc, char **argv, void **esp)
 {
   int i;
   for(i = argc - 1; i >= 0; i++) {
-    push_onto_user_stack(argv[i], esp);
+    int size = sizeof(argv[i]);
+    *esp -= size;
+    strlcpy(*(char**)*esp, argv[i], size);
   }
   
   uint8_t word_align = 0;
@@ -116,17 +117,19 @@ push_process_args(int argc, char **argv, void **esp)
   void *return_address = 0;
   push_onto_user_stack(return_address, esp);
 
-  free(argv);
+  // free(argv);
 }
 
 static void 
 push_onto_user_stack (void *value, void **esp) 
 {
-  if(false) {
-    return;
-  } else {
-    // push onto stack
-  }
+  // int size = sizeof(*value);
+  // if((int)*esp - size + (int)PHYS_BASE > PGSIZE) { // Detect stack overflow
+  //   return;
+  // } else {
+  //   *esp -= size;
+  //   *((void**)*esp) = value;
+  // }
 }
 
 /* A thread function that loads a user process and starts it
@@ -173,7 +176,7 @@ int
 process_wait (tid_t child_tid UNUSED) 
 {
   // TEMPORARY, FOR TESTING PURPOSES:
-  while (0) {
+  while (1) {
 
   }
   
@@ -399,12 +402,12 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   int argc = 0;
-  char **argv = malloc(sizeof(PGSIZE));
-  parse_process_args(cmdline, argc, argv);
+  char *argv[PGSIZE];
+  parse_process_args(cmdline, &argc, argv);
   if(argc > 0) {
     push_process_args(argc, argv, esp);
   } else {
-    // init_user_stack()
+    // init_user_stack() 
   }
 
   success = true;
@@ -536,7 +539,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12; // Changed from PHYS_BASE to PHYS_BASE - 12 
+        *esp = PHYS_BASE - 12; // Changed to - 12 for testing purposes
       else
         palloc_free_page (kpage);
     }
