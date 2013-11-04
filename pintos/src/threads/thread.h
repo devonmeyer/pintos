@@ -100,11 +100,21 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    //uint32_t pid; // might not need this
+    // uint32_t fd_counter;      /* A counter used to keep track of the number of file descriptors. */
+    // /* The information associated with each file descriptor. */
+    // struct fd_info {
+    //   int size; 
+    //   // size, name, begin addr, offset, etc. look at wherever the FD is stored later
+    // };
+    // struct fd_info fd_array[1000];       /* The array of file descriptors */
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
+
 
 /*
 
