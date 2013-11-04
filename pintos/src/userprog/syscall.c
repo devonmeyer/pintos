@@ -7,10 +7,15 @@
 #include "threads/pte.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+#include "lib/console.h"
 
 static void syscall_handler (struct intr_frame *);
-static void system_open(struct intr_frame *f);
 static bool is_valid_memory_access(const void *vaddr);
+
+static void system_open(struct intr_frame *f);
+static void system_write(struct intr_frame *f);
+
+#define WRITE_CHUNK_SIZE 300;
 
 void
 syscall_init (void) 
@@ -49,6 +54,8 @@ syscall_handler (struct intr_frame *f)
     case SYS_READ:
     	break;
     case SYS_WRITE:
+      system_write(f);
+      thread_exit();
     	break;
     case SYS_SEEK:
     	break;
@@ -58,6 +65,7 @@ syscall_handler (struct intr_frame *f)
     	break;
     default:
     	thread_exit();  
+      break;
   }
 }
 
@@ -68,7 +76,9 @@ print_okay(void){
 
 
 /* 
-	The method called when the SYS_OPEN is called. Format: open (VIRTUAL_ADDRESS).
+	The method called when the SYS_OPEN is called. 
+  System call format:
+  int open (const char *file)
 */
 static void
 system_open(struct intr_frame *f){
@@ -98,7 +108,44 @@ system_open(struct intr_frame *f){
     process_exit ();
 	}
 }
-	
+
+
+/* 
+  The method called when the SYS_WRITE is called. 
+  System call format: 
+  int write (int fd, const void *buffer, unsigned size)
+*/
+static void
+system_write(struct intr_frame *f){
+  // Assumes that items are pushed onto the stack from right to left
+  int fd = ((int) (f->esp)) + 1; 
+  const void *buffer = ((int) (f->esp)) + 2;
+  uint32_t size = ((void*) (buffer)) + 1;
+
+  // putbuf (const char *buffer, size_t n), defined in console.c
+
+  switch (fd) {
+    case 0:
+
+      break;
+    case 1: // Writing to the console (like a print statement)
+      if (size <= WRITE_CHUNK_SIZE) {
+        putbuf(buffer,size);
+      } else {
+        // Break the write into smaller chunks
+        while (size > WRITE_CHUNK_SIZE) {
+          putbuf(buffer,size);
+          size -= WRITE_CHUNK_SIZE;
+        }
+      }
+      break;
+    default:
+
+      break;
+  }
+
+}
+
 /* 
 	Returns true if the memory address is valid and can be accessed by the user process.
 */
@@ -108,6 +155,7 @@ is_valid_memory_access(const void *vaddr) {
 	ASSERT (vaddr != NULL);
 	ASSERT (!is_kernel_vaddr(vaddr));
 	ASSERT (pagedir_get_page(thread_current ()->pagedir,vaddr) != NULL);
+
 /*
 	// USE ASSERTIONS to handle invalid addr
 	if (*vaddr == 0) {
