@@ -94,7 +94,7 @@ system_open(struct intr_frame *f){
  
    // char val = *kvaddr; // DEREFERENCING (try & debug)
 
-    ASSERT (t->fd_counter > 1); // FD's of 0 and 1 are RESERVED
+   /* ASSERT (t->fd_counter > 1); // FD's of 0 and 1 are RESERVED
 
     // TO BE IMPLEMENTED LATER:
     //struct fd_info fdi = ... fill in the struct
@@ -102,7 +102,7 @@ system_open(struct intr_frame *f){
 
     f->eax = t->fd_counter;
     t->fd_counter++;
-    
+    */
     // wrong:
     //f->eax--; // "Increment" the stack pointer (We subtract here because the stack grows DOWN)
 	} else {
@@ -124,12 +124,17 @@ system_write(struct intr_frame *f){
   const void *buffer = ((int) (f->esp)) + 2;
   uint32_t size = ((void*) (buffer)) + 1;
 
+if (is_valid_memory_access (buffer) == false) {
+    f->eax = -1; // Returns a file descriptor of -1 ->>>>> Is this correct???
+    process_exit ();
+}
+
   // putbuf (const char *buffer, size_t n), defined in console.c
   ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
 
   if (fd == 1) {
     // Writing to the console (like a print statement)
-    if (size < WRITE_CHUNK_SIZE) {
+    if (size <= WRITE_CHUNK_SIZE) {
       putbuf (buffer, size);
     } else {
       // Break the write into smaller chunks
@@ -140,6 +145,8 @@ system_write(struct intr_frame *f){
     }
   } else {
     // Writing to a file with a file descriptor fd
+
+   // ASSERT (thread_current ()->fd_array[fd] != NULL); // Must be an open file
     
   }
 
