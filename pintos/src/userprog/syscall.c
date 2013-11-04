@@ -94,20 +94,20 @@ system_open(struct intr_frame *f){
  
    // char val = *kvaddr; // DEREFERENCING (try & debug)
 
-    /*if (t->fd_counter <= 1) {
+    if (t->fd_counter <= 1) {
       f->eax = -1; // Returns a file descriptor of -1
       process_exit ();
-    }*/
+    }
 
 
     // TO BE IMPLEMENTED LATER:
-    /*struct fd_info fdi;
+    struct fd_info fdi;
     fdi.start_addr = kvaddr;
     t->fd_array[t->fd_counter] = fdi;
 
     f->eax = t->fd_counter;
     t->fd_counter++;
-    */
+    
     // wrong:
     //f->eax--; // "Increment" the stack pointer (We subtract here because the stack grows DOWN)
 	} else {

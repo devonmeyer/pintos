@@ -27,11 +27,11 @@ typedef int tid_t;
 
 
 // /* The information associated with each file descriptor. */
-    // struct fd_info {
-    //   int size;
-    //   void *start_addr;
-    //   // size, name, begin addr, offset, etc. look at wherever the FD is stored later
-    // };
+    struct fd_info {
+      int size;
+      void *start_addr;
+      // size, name, begin addr, offset, etc. look at wherever the FD is stored later
+    };
 
 /* A kernel thread or user process.
 
@@ -108,10 +108,10 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    // int fd_counter;      /* A counter used to keep track of the number of file descriptors. */
+    int fd_counter;      /* A counter used to keep track of the number of file descriptors. */
     
-    // struct fd_info fd_array[18];       /* The array of file descriptors, indexed by the file descriptor number.
-    //                                       There are only 16 files in Pintos, but 0 and 1 are reserved fd values. */
+    struct fd_info fd_array[18];       /* The array of file descriptors, indexed by the file descriptor number.
+                                          There are only 16 files in Pintos, but 0 and 1 are reserved fd values. */
 #endif
 
     //uint32_t pid; // might not need this
