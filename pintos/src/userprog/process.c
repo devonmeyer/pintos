@@ -20,13 +20,17 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static const char* parse_process_name (const char *cmdline);
+static void parse_process_args(const char *cmdline, int argc, char **argv);
+static void push_process_args(int argc, char **argv, void **esp);
+static void push_onto_user_stack (void *value, void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+process_execute (const char *cmdline) 
 {
   char *fn_copy;
   tid_t tid;
@@ -36,13 +40,93 @@ process_execute (const char *file_name)
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (fn_copy, cmdline, PGSIZE);
+
+  /* Parse process name from command line input 
+     and pass it to thread_create */
+  const char *process_name = parse_process_name(cmdline); 
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
+}
+
+/* Parses the first argument from the command line input,
+   which should be the process name and returns it
+*/
+static const char* 
+parse_process_name (const char *cmdline)
+{
+  char *input;
+  strlcpy(input, cmdline, sizeof(PGSIZE)); // Create a copy of input to maintain state of original
+  const char *delimiters = " ";
+  char *save_ptr; // Address used to keep track of tokenizer's position
+  
+  const char *process_name = strtok_r(input, delimiters, &save_ptr);
+  return process_name;
+}
+
+/* Parses the remaining arguments from the command line input,
+   which should be the process arguments
+*/
+static void
+parse_process_args(const char *cmdline, int argc, char **argv)
+{
+  char *input;
+  strlcpy(input, cmdline, sizeof(PGSIZE)); // Create a copy of input to maintain state of original
+  const char *delimiters = " ";
+  char *save_ptr; // Address used to keep track of tokenizer's position
+  
+  char *token = strtok_r(input, delimiters, &save_ptr); // Parse process name
+  token = strtok_r(NULL, delimiters, &save_ptr); // Iterate to first argument
+  
+  /* Parse arguments from left to right and store each as an element in argv */
+  if(token != NULL) {
+    for(argc = 0; token != NULL; argc++) {
+      strlcpy(argv[argc], token, sizeof(token));
+      token = strtok_r(NULL, delimiters, &save_ptr);
+    }
+  } else { // If there are no arguments
+    argc = 0;
+    argv = NULL;
+  }
+}
+
+/* Pushes arguments parsed from the command line onto the user stack */
+static void 
+push_process_args(int argc, char **argv, void **esp)
+{
+  int i;
+  for(i = argc - 1; i >= 0; i++) {
+    push_onto_user_stack(argv[i], esp);
+  }
+  
+  uint8_t word_align = 0;
+  push_onto_user_stack(word_align, esp);
+  
+  for(i = argc; i >= 0; i++) {
+    push_onto_user_stack(&argv[i], esp);
+  }
+  
+  push_onto_user_stack(argv, esp);
+  push_onto_user_stack(argc, esp);
+  
+  void *return_address = 0;
+  push_onto_user_stack(return_address, esp);
+
+  free(argv);
+}
+
+static void 
+push_onto_user_stack (void *value, void **esp) 
+{
+  if(false) {
+    return;
+  } else {
+    // push onto stack
+  }
 }
 
 /* A thread function that loads a user process and starts it
@@ -206,7 +290,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (const char *cmdline, void (**eip) (void), void **esp) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -222,6 +306,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
+  const char *file_name = parse_process_name(cmdline);
   file = filesys_open (file_name);
   if (file == NULL) 
     {
@@ -307,6 +392,15 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
+
+  int argc = 0;
+  char **argv = malloc(sizeof(PGSIZE));
+  parse_process_args(cmdline, argc, argv);
+  if(argc > 0) {
+    push_process_args(argc, argv, esp);
+  } else {
+    // init_user_stack()
+  }
 
   success = true;
 
@@ -437,7 +531,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12; // Changed from PHYS_BASE to PHYS_BASE - 12 
       else
         palloc_free_page (kpage);
     }

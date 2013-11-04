@@ -5,10 +5,12 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/pte.h"
+#include "userprog/pagedir.h"
+#include "userprog/process.h"
 
 static void syscall_handler (struct intr_frame *);
-static void system_open(void);
-static bool is_valid_memory_access(int *vaddr);
+static void system_open(struct intr_frame *f);
+static bool is_valid_memory_access(const void *vaddr);
 
 void
 syscall_init (void) 
@@ -39,7 +41,8 @@ syscall_handler (struct intr_frame *f)
     case SYS_REMOVE:
     	break;
     case SYS_OPEN:
-    	//system_open();
+    	system_open(f);
+      thread_exit();
     	break;
     case SYS_FILESIZE:
     	break;
@@ -68,32 +71,57 @@ print_okay(void){
 	The method called when the SYS_OPEN is called. Format: open (VIRTUAL_ADDRESS).
 */
 static void
-system_open(void){
-	int vaddr = &(f->esp) - (1 * (size_of(int))); // The first argument in the interupt frame
+system_open(struct intr_frame *f){
+	void *vaddr = ((int) (f->esp)) + 1; // The first argument in the interrupt frame
 
 	if (is_valid_memory_access(vaddr)) {
-		// Dereference the pointer
-		f->eax = *vaddr;
-	}	
-}
+		// User Virtual Address -> Kernel Virtual Address -> Physical Address
 
+    struct thread *t = thread_current ();
+		char *kvaddr = pagedir_get_page(t->pagedir,vaddr); 
+ 
+   // char val = *kvaddr; // DEREFERENCING (try & debug)
+
+    ASSERT (t->fd_counter > 1); // FD's of 0 and 1 are RESERVED
+
+    // TO BE IMPLEMENTED LATER:
+    //struct fd_info fdi = ... fill in the struct
+    //t->fd_array[t->fd_counter] = fdi;
+
+    f->eax = t->fd_counter;
+    t->fd_counter++;
+    
+    // wrong:
+    //f->eax--; // "Increment" the stack pointer (We subtract here because the stack grows DOWN)
+	} else {
+    f->eax = -1; // Returns a file descriptor of -1
+    process_exit ();
+	}
+}
+	
 /* 
 	Returns true if the memory address is valid and can be accessed by the user process.
 */
 static bool
-is_valid_memory_access(int *vaddr) {
-	if (&vaddr == 0) {
+is_valid_memory_access(const void *vaddr) {
+
+	ASSERT (vaddr != NULL);
+	ASSERT (!is_kernel_vaddr(vaddr));
+	ASSERT (pagedir_get_page(thread_current ()->pagedir,vaddr) != NULL);
+/*
+	// USE ASSERTIONS to handle invalid addr
+	if (*vaddr == 0) {
 		// Null Pointer
 		return false;
 	else if (is_kernel_vaddr(vaddr)) { 
 		// Pointer to Kernel Virtual Address Space
 		return false;
 		
-	} else if (pagedir_get_page(pd_no(vaddr),vaddr) == NULL) { 
+	} else if (pagedir_get_page(thread_current()->pagedir,vaddr) == NULL) { 
 		// Pointer to Unmapped Virtual Memory
 		return false;
 	}
-
+*/
 	return true;
 }
 
