@@ -7,7 +7,6 @@
 #include "threads/pte.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
-#include "lib/console.h"
 
 static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
@@ -126,28 +125,27 @@ system_write(struct intr_frame *f){
   uint32_t size = ((void*) (buffer)) + 1;
 
   // putbuf (const char *buffer, size_t n), defined in console.c
+  ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
 
-  switch (fd) {
-    case 0:
-
-      break;
-    case 1: // Writing to the console (like a print statement)
-      if (size <= WRITE_CHUNK_SIZE) {
-        putbuf(buffer,size);
-      } else {
-        // Break the write into smaller chunks
-        while (size > WRITE_CHUNK_SIZE) {
-          putbuf(buffer,size);
-          size -= WRITE_CHUNK_SIZE;
-        }
+  if (fd == 1) {
+    // Writing to the console (like a print statement)
+    if (size < WRITE_CHUNK_SIZE) {
+      putbuf (buffer, size);
+    } else {
+      // Break the write into smaller chunks
+      while (size > WRITE_CHUNK_SIZE) {
+        putbuf (buffer, size);
+        size -= WRITE_CHUNK_SIZE;
       }
-      break;
-    default:
-
-      break;
+    }
+  } else {
+    // Writing to a file with a file descriptor fd
+    
   }
 
 }
+
+
 
 /* 
 	Returns true if the memory address is valid and can be accessed by the user process.
