@@ -94,11 +94,16 @@ system_open(struct intr_frame *f){
  
    // char val = *kvaddr; // DEREFERENCING (try & debug)
 
-   /* ASSERT (t->fd_counter > 1); // FD's of 0 and 1 are RESERVED
+    /*if (t->fd_counter <= 1) {
+      f->eax = -1; // Returns a file descriptor of -1
+      process_exit ();
+    }*/
+
 
     // TO BE IMPLEMENTED LATER:
-    //struct fd_info fdi = ... fill in the struct
-    //t->fd_array[t->fd_counter] = fdi;
+    /*struct fd_info fdi;
+    fdi.start_addr = kvaddr;
+    t->fd_array[t->fd_counter] = fdi;
 
     f->eax = t->fd_counter;
     t->fd_counter++;
@@ -146,7 +151,7 @@ if (is_valid_memory_access (buffer) == false) {
   } else {
     // Writing to a file with a file descriptor fd
 
-   // ASSERT (thread_current ()->fd_array[fd] != NULL); // Must be an open file
+    //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
     
   }
 
@@ -160,24 +165,24 @@ if (is_valid_memory_access (buffer) == false) {
 static bool
 is_valid_memory_access(const void *vaddr) {
 
+  // Use ASSERT statements for debugging, then remove before publishing code:
 	ASSERT (vaddr != NULL);
 	ASSERT (!is_kernel_vaddr(vaddr));
 	ASSERT (pagedir_get_page(thread_current ()->pagedir,vaddr) != NULL);
 
-/*
-	// USE ASSERTIONS to handle invalid addr
-	if (*vaddr == 0) {
+
+	if (vaddr == NULL) {
 		// Null Pointer
 		return false;
-	else if (is_kernel_vaddr(vaddr)) { 
+	} else if (is_kernel_vaddr(vaddr)) { 
 		// Pointer to Kernel Virtual Address Space
 		return false;
 		
-	} else if (pagedir_get_page(thread_current()->pagedir,vaddr) == NULL) { 
+	} else if (pagedir_get_page(thread_current ()->pagedir,vaddr)) { 
 		// Pointer to Unmapped Virtual Memory
 		return false;
 	}
-*/
+
 	return true;
 }
 
