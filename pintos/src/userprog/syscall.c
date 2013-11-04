@@ -10,7 +10,7 @@
 
 static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
-static bool get_arguments(struct intr_frame *f, int num_args, int * arguments);
+static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static void system_open(struct intr_frame *f);
 static void system_write(struct intr_frame *f);
@@ -28,14 +28,14 @@ syscall_handler (struct intr_frame *f)
 {
   printf ("system call!\n");
   int * num = f->esp;
-  int * arguments;
+  int arguments[3];
   switch(*num){
   	case SYS_HALT:
   		print_okay();
   		thread_exit();
   		break;
     case SYS_EXIT:
-    	arguments = get_arguments(f, 0);
+    	get_arguments(f, 0, arguments);
     	thread_exit();
       // Need to set f->eax to arguments[0]
     	break;
@@ -174,20 +174,11 @@ is_valid_memory_access(const void *vaddr) {
 	return true;
 }
 
-static bool
-get_arguments(struct intr_frame * f, int num_args){
-  int arguments[num_args];
+static void
+get_arguments(struct intr_frame * f, int num_args, int * arguments){
   int i;
-  for (i = 0; i < n; i++){
+  for (i = 0; i < num_args; i++){
     int * arg = (int *) f->esp + 1 + i;
     arguments[i] = *arg;
   }
-  return arguments;
 }
-
-
-
-
-
-
-
