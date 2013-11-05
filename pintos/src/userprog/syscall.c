@@ -15,12 +15,15 @@ static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static void system_open(struct intr_frame *f);
 static void system_write(struct intr_frame *f, int * arguments);
 
+static struct lock file_sys_lock;
+
 #define WRITE_CHUNK_SIZE 300
 
 void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init (&file_sys_lock);
 }
 
 static void
@@ -39,6 +42,7 @@ syscall_handler (struct intr_frame *f)
       print_okay();
     	get_arguments(f, 1, arguments);
     	thread_exit();
+      f->eax = 0;
       // Need to set f->eax to arguments[0]
     	break;
     case SYS_EXEC:
@@ -164,6 +168,12 @@ if (is_valid_memory_access (buffer) == false) {
   } else {
     // Writing to a file with a file descriptor fd
     printf("7\n");
+
+
+    lock_acquire (&file_sys_lock);
+    file_write ();
+    lock_release (&file_sys_lock);    
+
     //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
     
   }
