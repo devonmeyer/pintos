@@ -28,9 +28,8 @@ typedef int tid_t;
 
 // /* The information associated with each file descriptor. */
     struct fd_info {
-      //int size; // THE FILE SYSTEM HAS THIS
+      int size;
       void *start_addr;
-      // NEED TO HAVE OFFSET AND THAT IS IT!
       // size, name, begin addr, offset, etc. look at wherever the FD is stored later
     };
 

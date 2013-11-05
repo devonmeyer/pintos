@@ -9,12 +9,14 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
+#include "devices/shutdown.h"
+#include "process.h"
 
 static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
-static void system_open(struct intr_frame *f);
+static void system_open(struct intr_frame *f, int * arguments);
 static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
 
@@ -40,6 +42,8 @@ syscall_handler (struct intr_frame *f)
   printf ("System call is %d\n", *num);
   switch(*num){
   	case SYS_HALT:
+  		print_okay();
+      shutdown_power_off();
   		thread_exit();
   		break;
     case SYS_EXIT:
@@ -47,8 +51,12 @@ syscall_handler (struct intr_frame *f)
       f->eax = arguments[0];
       printf("%s: exit(%d)\n", thread_current()->name, (int) arguments[0]);
     	thread_exit();
+      // Need to set f->eax to arguments[0]
     	break;
     case SYS_EXEC:
+      print_okay();
+      get_arguments(f, 1, arguments);
+      // f->eax = system_exec((const char*)arguments[i]);
     	break;
     case SYS_WAIT:
     	break;
@@ -61,7 +69,8 @@ syscall_handler (struct intr_frame *f)
 
     	break;
     case SYS_OPEN:
-    	system_open(f);
+      get_arguments(f, 1, arguments);
+    	system_open(f, arguments);
     	break;
     case SYS_FILESIZE:
     	break;
@@ -83,27 +92,42 @@ syscall_handler (struct intr_frame *f)
   }
 }
 
+// static pid_t 
+// system_exec (const char *cmd_line)
+// {
+//   // pid is mapped exactly to tid, process_execute returns tid
+//   pid_t pid = (pid_t)process_execute(cmd_line);
+// }
+
+void
+print_okay(void){
+	printf("Got a system call that I expected!\n");
+}
+
 /* 
 	The method called when the SYS_OPEN is called. 
   System call format:
   int open (const char *file)
 */
 static void
-system_open(struct intr_frame *f){
-	void *vaddr = ((int) (f->esp)) + 1; // The first argument in the interrupt frame
+system_open(struct intr_frame *f, int * arguments){
+	//void *vaddr = ((char *) (f->esp)) + 1; // The first argument in the interrupt frame
+    char *vaddr = ((char *) arguments[0]);
+    
+    printf ("vaddr: %X\n",vaddr);
 
-	if (is_valid_memory_access(vaddr)) {
+	if (is_valid_memory_access(vaddr) == true) {
 		// User Virtual Address -> Kernel Virtual Address -> Physical Address
 
     struct thread *t = thread_current ();
 		char *kvaddr = pagedir_get_page(t->pagedir,vaddr); 
  
-   // char val = *kvaddr; // DEREFERENCING (try & debug)
+    // char val = *kvaddr; // DEREFERENCING (try & debug)
 
-    if (t->fd_counter <= 1) {
-      f->eax = -1; // Returns a file descriptor of -1
+    /*if (t->fd_counter <= 1) {
+      f->eax = -1;
       process_exit ();
-    }
+    }*/
 
 
     // TO BE IMPLEMENTED LATER:
@@ -117,7 +141,8 @@ system_open(struct intr_frame *f){
     // wrong:
     //f->eax--; // "Increment" the stack pointer (We subtract here because the stack grows DOWN)
 	} else {
-    f->eax = -1; // Returns a file descriptor of -1
+    printf ("invalid open call, will exit soon\n");
+    f->eax = -1;
     process_exit ();
 	}
 }
@@ -141,6 +166,7 @@ if (is_valid_memory_access (buffer) == false) {
     process_exit ();
 }
   buffer = pagedir_get_page(thread_current()->pagedir, buffer);
+
   // putbuf (const char *buffer, size_t n), defined in console.c
   ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
   if (fd == 1) {
@@ -157,10 +183,8 @@ if (is_valid_memory_access (buffer) == false) {
   } else {
     // Writing to a file with a file descriptor fd
 
-
-
     lock_acquire (&file_sys_lock);
-    file_write ();
+    //file_write ();
     lock_release (&file_sys_lock);    
     //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
     
@@ -194,14 +218,20 @@ is_valid_memory_access(const void *vaddr) {
 
 	if (vaddr == NULL) {
 		// Null Pointer
+    printf ("--- addr is null pointer ---\n");
 		return false;
 	} else if (is_kernel_vaddr(vaddr)) { 
 		// Pointer to Kernel Virtual Address Space
+    printf ("--- is user virtual address ---\n");
 		return false;
 	} else if (pagedir_get_page(thread_current ()->pagedir, vaddr) == NULL) { 
 		// Pointer to Unmapped Virtual Memory
+    printf ("--- Unmapped ---\n");
 		return false;
 	}
+
+  printf ("--- valid_memory_access ---\n");
+
 
 	return true;
 }
