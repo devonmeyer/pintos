@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "threads/pte.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
@@ -16,12 +17,15 @@ static void system_open(struct intr_frame *f);
 static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
 
+static struct lock file_sys_lock;
+
 #define WRITE_CHUNK_SIZE 300
 
 void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init (&file_sys_lock);
 }
 
 static void
@@ -145,6 +149,12 @@ if (is_valid_memory_access (buffer) == false) {
     }
   } else {
     // Writing to a file with a file descriptor fd
+
+
+
+    lock_acquire (&file_sys_lock);
+    file_write ();
+    lock_release (&file_sys_lock);    
     //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
     
   }
