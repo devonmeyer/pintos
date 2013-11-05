@@ -14,6 +14,7 @@ static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static void system_open(struct intr_frame *f);
 static void system_write(struct intr_frame *f, int * arguments);
+static void system_exit(int s);
 
 #define WRITE_CHUNK_SIZE 300
 
@@ -32,12 +33,11 @@ syscall_handler (struct intr_frame *f)
   printf ("System call is %d\n", *num);
   switch(*num){
   	case SYS_HALT:
-  		print_okay();
   		thread_exit();
   		break;
     case SYS_EXIT:
-      print_okay();
     	get_arguments(f, 1, arguments);
+      f->eax = arguments[0];
     	thread_exit();
       // Need to set f->eax to arguments[0]
     	break;
@@ -50,19 +50,15 @@ syscall_handler (struct intr_frame *f)
     case SYS_REMOVE:
     	break;
     case SYS_OPEN:
-      print_okay();
     	system_open(f);
-      thread_exit();
     	break;
     case SYS_FILESIZE:
     	break;
     case SYS_READ:
     	break;
     case SYS_WRITE:
-      print_okay();
       get_arguments(f, 3, arguments);
       system_write(f, arguments);
-      thread_exit();
     	break;
     case SYS_SEEK:
     	break;
@@ -75,12 +71,6 @@ syscall_handler (struct intr_frame *f)
       break;
   }
 }
-
-void
-print_okay(void){
-	printf("Got a system call that I expected!\n");
-}
-
 
 /* 
 	The method called when the SYS_OPEN is called. 
@@ -167,6 +157,7 @@ if (is_valid_memory_access (buffer) == false) {
     //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
     
   }
+  printf("8\n");
 
 }
 
