@@ -21,9 +21,12 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static char* parse_process_name (char *cmdline);
-static void parse_process_args(const char *cmdline, int *argc, char **argv);
-static void push_process_args(int argc, char **argv, void **esp);
-static void push_onto_user_stack (void *value, void **esp);
+static void parse_process_args(const char *cmdline, void **esp);
+static void push_onto_user_stack(void **esp, void *data, int size);
+static void push_4bytes_onto_user_stack(void **esp, void *data);
+static void align_user_stack(void **esp);
+// static void push_process_args(int argc, char **argv, void **esp);
+// static void push_onto_user_stack (void *value, void **esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -44,10 +47,13 @@ process_execute (const char *cmdline)
 
   /* Parse process name from command line input 
      and pass it to thread_create */
-  const char *process_name = parse_process_name(fn_copy); 
+  // const char *process_name = parse_process_name(fn_copy); 
+
+  char *process_name = parse_process_name(cmdline);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (cmdline, PRI_DEFAULT, start_process, (void*)process_name);
+  tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
+  // printf("Process name: %s\n", process_name);
   // tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -60,10 +66,17 @@ process_execute (const char *cmdline)
 static char* 
 parse_process_name (char *cmdline)
 {
+  /* I was running into problems where the input into this function
+     was being modified in the scope of load so I created a temporary
+     buffer so that the original input remained unchanged
+  */
+  char buffer[100];
+  strlcpy(buffer, cmdline, (strlen(cmdline)+1));
+
   const char *delimiters = " ";
   char *save_ptr; // Address used to keep track of tokenizer's position
   
-  char *process_name = strtok_r(cmdline, delimiters, &save_ptr);
+  char *process_name = strtok_r(buffer, delimiters, &save_ptr);
   return process_name;
 }
 
@@ -71,67 +84,127 @@ parse_process_name (char *cmdline)
    which should be the process arguments
 */
 static void
-parse_process_args(const char *cmdline, int *argc, char **argv)
+parse_process_args(const char *cmdline, void **esp)
 {
-  char input[PGSIZE];
-  strlcpy(input, cmdline, sizeof(PGSIZE)); // Create a copy of input to maintain state of original
-  const char *delimiters = " ";
-  char *save_ptr; // Address used to keep track of tokenizer's position
-  
-  char *token = strtok_r(input, delimiters, &save_ptr); // Parse process name
-  token = strtok_r(NULL, delimiters, &save_ptr); // Iterate to first argument
-  
-  /* Parse arguments from left to right and store each as an element in argv */
-  if(token != NULL) {
-    for(*argc = 0; token != NULL; *argc++) {
-      strlcpy(argv[*argc], token, sizeof(token));
-      printf("Argument: %s\n", argv[*argc]);
-      token = strtok_r(NULL, delimiters, &save_ptr);
-    }
-  } else { // If there are no arguments
-    *argc = 0;
-    // argv = NULL;
-  }
-}
+  // printf("Commandline in parse_process_args: %s\n", cmdline);
+  int argc = 0;
+  char **argv = malloc(sizeof(PGSIZE));
 
-/* Pushes arguments parsed from the command line onto the user stack */
-static void 
-push_process_args(int argc, char **argv, void **esp)
-{
+  char *delimiters = " ";
+  char *token, *save_ptr;
+
+  for(token = strtok_r(cmdline, delimiters, &save_ptr); token != NULL; token = strtok_r(NULL, delimiters, &save_ptr)) {
+    argv[argc] = token;
+    // printf("Arguments: %s\n", argv[argc]);
+    argc++;
+  }
+
+  // Round stack pointer to nearest multiple of 4
+  align_user_stack(esp);
+  // printf("esp address: %X\n", *esp);
+
+  // Push argv[i]
+  char *argv_addresses[argc];
   int i;
-  for(i = argc - 1; i >= 0; i++) {
-    int size = sizeof(argv[i]);
-    *esp -= size;
-    strlcpy(*(char**)*esp, argv[i], size);
+  for(i = argc-1; i >= 0; i--) {
+    int size = strlen(argv[i])+1;
+    push_onto_user_stack(esp, &argv[i], size);
+    // printf("Address: %X, Data: %s, argv[i]\n", *esp, *(char**)*esp);
+    argv_addresses[i] = (char*)(*esp);
   }
-  
-  uint8_t word_align = 0;
-  push_onto_user_stack(word_align, esp);
-  
-  for(i = argc; i >= 0; i++) {
-    push_onto_user_stack(&argv[i], esp);
-  }
-  
-  push_onto_user_stack(argv, esp);
-  push_onto_user_stack(argc, esp);
-  
-  void *return_address = 0;
-  push_onto_user_stack(return_address, esp);
 
-  // free(argv);
+  // TO DO word align
+  align_user_stack(esp);
+
+  // Push &argv[argc]
+  push_4bytes_onto_user_stack(esp, &argv[argc]);
+  // printf("Address: %X, Data: %X, &argv[argc]\n", *esp, *(char**)*esp);
+
+  // Push &argv[i]
+  for(i = argc-1; i >= 0; i--) {
+    // char **argv_address = &argv_addresses[i];
+    push_4bytes_onto_user_stack(esp, &argv_addresses[i]);
+    // printf("Address: %X, Data: %X, &argv[i]\n", *esp, *(char**)*esp);
+  }
+
+  // Push argv
+  char *argv_pointer = (char*)(*esp);
+  push_4bytes_onto_user_stack(esp, &argv_pointer);
+  // printf("Address: %X, Data: %X, &argv\n", *esp, *(char**)*esp);
+
+  // Push argc
+  push_4bytes_onto_user_stack(esp, &argc);
+  // printf("Address: %X, Data: %i, argc\n", *esp, *(int*)*esp);
+  
+  // Push return address
+  push_4bytes_onto_user_stack(esp, &argv[argc]); // argv[argc] is already a null pointer so I pushed that as a NULL pointer instead of creating a new one
+  // printf("Address: %X, Data: %X, fake_address\n", *esp, *(char**)*esp);
+
+  free(argv);
+}
+
+static void
+push_4bytes_onto_user_stack(void **esp, void *data)
+{
+  push_onto_user_stack(esp, data, 4);
+}
+
+static void
+push_onto_user_stack(void **esp, void *data, int size)
+{
+  *esp -= size;
+  memcpy(*esp, data, size);
 }
 
 static void 
-push_onto_user_stack (void *value, void **esp) 
+align_user_stack(void **esp)
 {
-  // int size = sizeof(*value);
-  // if((int)*esp - size + (int)PHYS_BASE > PGSIZE) { // Detect stack overflow
-  //   return;
-  // } else {
-  //   *esp -= size;
-  //   *((void**)*esp) = value;
-  // }
+  int alignment = (uint16_t)*esp % 4;
+
+  if(alignment > 0) {
+    *esp -= alignment;
+    printf("I aligned!\n");
+  }
 }
+
+// /* Pushes arguments parsed from the command line onto the user stack */
+// static void 
+// push_process_args(int argc, char **argv, void **esp)
+// {
+//   int i;
+//   for(i = argc - 1; i >= 0; i++) {
+//     int size = sizeof(argv[i]);
+//     *esp -= size;
+//     strlcpy(*(char**)*esp, argv[i], size);
+//   }
+  
+//   uint8_t word_align = 0;
+//   push_onto_user_stack(word_align, esp);
+  
+//   for(i = argc; i >= 0; i++) {
+//     push_onto_user_stack(&argv[i], esp);
+//   }
+  
+//   push_onto_user_stack(argv, esp);
+//   push_onto_user_stack(argc, esp);
+  
+//   void *return_address = 0;
+//   push_onto_user_stack(return_address, esp);
+
+//   // free(argv);
+// }
+
+// static void 
+// push_onto_user_stack (void *value, void **esp) 
+// {
+//   // int size = sizeof(*value);
+//   // if((int)*esp - size + (int)PHYS_BASE > PGSIZE) { // Detect stack overflow
+//   //   return;
+//   // } else {
+//   //   *esp -= size;
+//   //   *((void**)*esp) = value;
+//   // }
+// }
 
 /* A thread function that loads a user process and starts it
    running. */
@@ -139,6 +212,7 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
+  printf("Commandline in start_process: %s\n", file_name);
   struct intr_frame if_;
   bool success;
 
@@ -301,6 +375,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 bool
 load (const char *cmdline, void (**eip) (void), void **esp) 
 {
+  printf("Commandline in load: %s\n", cmdline);
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -315,7 +390,14 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  const char *file_name = parse_process_name(cmdline);
+
+  // char *file_name = parse_process_name(cmdline); /* For some reason this function returns garbage here */
+  char buffer[100];
+  strlcpy(buffer, cmdline, (strlen(cmdline)+1));
+  char *save_ptr; // Address used to keep track of tokenizer's position
+  char *file_name = strtok_r(buffer, " ", &save_ptr);
+
+  printf("File name in load: %s\n", file_name);
   file = filesys_open (file_name);
   if (file == NULL) 
     {
@@ -402,14 +484,7 @@ load (const char *cmdline, void (**eip) (void), void **esp)
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
-  // int argc = 0;
-  // char *argv[PGSIZE];
-  // parse_process_args(cmdline, &argc, argv);
-  // if(argc > 0) {
-  //   push_process_args(argc, argv, esp);
-  // } else {
-  //   // init_user_stack() 
-  // }
+  parse_process_args(cmdline, esp);
 
   success = true;
 
@@ -540,7 +615,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12; // Changed to - 12 for testing purposes
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
