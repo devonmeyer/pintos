@@ -15,7 +15,7 @@ static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
-static pid_t system_exec (const char *cmd_line);
+// static pid_t system_exec (const char *cmd_line);
 static void system_open(struct intr_frame *f);
 static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
@@ -53,7 +53,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_EXEC:
       print_okay();
       get_arguments(f, 1, arguments);
-      f->eax = system_exec((const char*)arguments[i]);
+      // f->eax = system_exec((const char*)arguments[i]);
     	break;
     case SYS_WAIT:
     	break;
@@ -84,12 +84,12 @@ syscall_handler (struct intr_frame *f)
   }
 }
 
-static pid_t 
-system_exec (const char *cmd_line)
-{
-  // pid is mapped exactly to tid, process_execute returns tid
-  pid_t pid = (pid_t)process_execute(cmd_line);
-}
+// static pid_t 
+// system_exec (const char *cmd_line)
+// {
+//   // pid is mapped exactly to tid, process_execute returns tid
+//   pid_t pid = (pid_t)process_execute(cmd_line);
+// }
 
 void
 print_okay(void){
