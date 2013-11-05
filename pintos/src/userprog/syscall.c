@@ -29,7 +29,7 @@ syscall_handler (struct intr_frame *f)
   printf ("system call!\n");
   int * num = f->esp;
   int arguments[3];
-  printf ("System call is %d", *num);
+  printf ("System call is %d\n", *num);
   switch(*num){
   	case SYS_HALT:
   		print_okay();
@@ -132,29 +132,38 @@ system_write(struct intr_frame *f, int * arguments){
   // Assumes that items are pushed onto the stack from right to left
   int fd = ((int) arguments[0]); 
   const void *buffer = ((void *) arguments[1]);
-  unsigned size = ((void*) arguments[2]);
+  unsigned size = ((unsigned) arguments[2]);
+
 
 if (is_valid_memory_access (buffer) == false) {
     f->eax = -1; // Returns a file descriptor of -1 ->>>>> Is this correct???
     process_exit ();
 }
+  buffer = pagedir_get_page(thread_current()->pagedir, buffer);
+  printf("new buffer: %d\n", buffer);
+  printf("pagedir %d", thread_current()->pagedir);
+  printf("1\n");
   // putbuf (const char *buffer, size_t n), defined in console.c
   ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
-
+  printf("2\n");
   if (fd == 1) {
     // Writing to the console (like a print statement)
     if (size <= WRITE_CHUNK_SIZE) {
+      printf("3\n");
       putbuf (buffer, size);
+      printf("4\n");
     } else {
       // Break the write into smaller chunks
+      printf("5\n");
       while (size > WRITE_CHUNK_SIZE) {
+        printf("6\n");
         putbuf (buffer, size);
         size -= WRITE_CHUNK_SIZE;
       }
     }
   } else {
     // Writing to a file with a file descriptor fd
-
+    printf("7\n");
     //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
     
   }
@@ -170,9 +179,9 @@ static bool
 is_valid_memory_access(const void *vaddr) {
 
   // Use ASSERT statements for debugging, then remove before publishing code:
-	ASSERT (vaddr != NULL);
-	ASSERT (!is_kernel_vaddr(vaddr));
-	ASSERT (pagedir_get_page(thread_current ()->pagedir,vaddr) != NULL);
+	//ASSERT (vaddr != NULL);
+	//ASSERT (!is_kernel_vaddr(vaddr));
+	//ASSERT (pagedir_get_page(thread_current ()->pagedir,vaddr) != NULL);
 
 
 	if (vaddr == NULL) {
@@ -181,8 +190,7 @@ is_valid_memory_access(const void *vaddr) {
 	} else if (is_kernel_vaddr(vaddr)) { 
 		// Pointer to Kernel Virtual Address Space
 		return false;
-		
-	} else if (pagedir_get_page(thread_current ()->pagedir,vaddr)) { 
+	} else if (pagedir_get_page(thread_current ()->pagedir, vaddr) == NULL) { 
 		// Pointer to Unmapped Virtual Memory
 		return false;
 	}
