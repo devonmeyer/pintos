@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "threads/pte.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
@@ -17,6 +18,9 @@ static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static pid_t system_exec (const char *cmd_line);
 static void system_open(struct intr_frame *f);
 static void system_write(struct intr_frame *f, int * arguments);
+static void system_exit(int s);
+
+static struct lock file_sys_lock;
 
 #define WRITE_CHUNK_SIZE 300
 
@@ -24,6 +28,7 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init (&file_sys_lock);
 }
 
 static void
@@ -40,10 +45,10 @@ syscall_handler (struct intr_frame *f)
   		thread_exit();
   		break;
     case SYS_EXIT:
-      print_okay();
     	get_arguments(f, 1, arguments);
+      f->eax = arguments[0];
+      printf("%s: exit(%d)\n", thread_current()->name, (int) arguments[0]);
     	thread_exit();
-      // Need to set f->eax to arguments[0]
     	break;
     case SYS_EXEC:
       print_okay();
@@ -57,19 +62,15 @@ syscall_handler (struct intr_frame *f)
     case SYS_REMOVE:
     	break;
     case SYS_OPEN:
-      print_okay();
     	system_open(f);
-      thread_exit();
     	break;
     case SYS_FILESIZE:
     	break;
     case SYS_READ:
     	break;
     case SYS_WRITE:
-      print_okay();
       get_arguments(f, 3, arguments);
       system_write(f, arguments);
-      thread_exit();
     	break;
     case SYS_SEEK:
     	break;
@@ -94,7 +95,6 @@ void
 print_okay(void){
 	printf("Got a system call that I expected!\n");
 }
-
 
 /* 
 	The method called when the SYS_OPEN is called. 
@@ -154,30 +154,27 @@ if (is_valid_memory_access (buffer) == false) {
     process_exit ();
 }
   buffer = pagedir_get_page(thread_current()->pagedir, buffer);
-  printf("new buffer: %d\n", buffer);
-  printf("pagedir %d", thread_current()->pagedir);
-  printf("1\n");
   // putbuf (const char *buffer, size_t n), defined in console.c
   ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
-  printf("2\n");
   if (fd == 1) {
     // Writing to the console (like a print statement)
     if (size <= WRITE_CHUNK_SIZE) {
-      printf("3\n");
       putbuf (buffer, size);
-      printf("4\n");
     } else {
       // Break the write into smaller chunks
-      printf("5\n");
       while (size > WRITE_CHUNK_SIZE) {
-        printf("6\n");
         putbuf (buffer, size);
         size -= WRITE_CHUNK_SIZE;
       }
     }
   } else {
     // Writing to a file with a file descriptor fd
-    printf("7\n");
+
+
+
+    lock_acquire (&file_sys_lock);
+    file_write ();
+    lock_release (&file_sys_lock);    
     //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
     
   }
