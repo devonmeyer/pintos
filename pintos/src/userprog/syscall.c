@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "threads/pte.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
