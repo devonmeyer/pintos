@@ -117,26 +117,29 @@ system_open(struct intr_frame *f, int * arguments){
  
     // char val = *kvaddr; // DEREFERENCING (try & debug)
 
-    /*if (t->fd_counter <= 1) {
-      f->eax = -1;
-      process_exit ();
-    }*/
-
-
     // TO BE IMPLEMENTED LATER:
     struct fd_info fdi;
     fdi.start_addr = kvaddr;
-    t->fd_array[t->fd_counter] = fdi;
+    int fd;
 
-    f->eax = t->fd_counter;
-    t->fd_counter++;
-    
-    // wrong:
-    //f->eax--; // "Increment" the stack pointer (We subtract here because the stack grows DOWN)
+    // Choose an available file descriptor
+    int i;
+    for (i = 2; i < 18; i++) {
+      if (t->fd_array[i].valid == 0) {
+        fd = i;
+      }
+    }
+
+    // Set the file descriptor info at the fd slot in the array
+    t->fd_array[fd] = fdi;
+   
+    // Return the file descriptor number
+    f->eax = fd;
+
 	} else {
     printf ("invalid open call, will exit soon\n");
     f->eax = -1;
-    process_exit ();
+    //process_exit ();
 	}
 }
 

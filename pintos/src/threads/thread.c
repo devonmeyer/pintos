@@ -562,7 +562,12 @@ init_thread (struct thread *t, const char *name, int priority)
 
 
 #ifdef USERPROG
-  t->fd_counter = 2; // File descriptor values of 0 and 1 are RESERVED, so we begin at 2
+  int i;
+  struct fd_info fdi;
+  fdi.valid = 0;
+  for (i = 2; i < 18; i++) {
+    t->fd_array[i] = fdi;
+  }
 #endif
 
   old_level = intr_disable ();
