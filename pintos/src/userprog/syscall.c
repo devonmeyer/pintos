@@ -8,6 +8,7 @@
 #include "threads/pte.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+#include "filesys/filesys.h"
 #include "devices/shutdown.h"
 #include "process.h"
 
@@ -18,6 +19,8 @@ static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static void system_open(struct intr_frame *f, int * arguments);
 static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
+
+static bool system_create(struct intr_frame *f, int * arguments);
 
 static struct lock file_sys_lock;
 
@@ -58,8 +61,12 @@ syscall_handler (struct intr_frame *f)
     case SYS_WAIT:
     	break;
     case SYS_CREATE:
+      get_arguments(f, 2, arguments);
+      f->eax = system_create(f, arguments);
     	break;
     case SYS_REMOVE:
+      get_arguments(f, 1, arguments);
+
     	break;
     case SYS_OPEN:
       get_arguments(f, 1, arguments);
@@ -186,6 +193,16 @@ if (is_valid_memory_access (buffer) == false) {
     
   }
 
+}
+
+static bool system_create(struct intr_frame *f, int * arguments){
+  bool result = false;
+  const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
+  const unsigned s = (unsigned) arguments[1];
+  lock_acquire(&file_sys_lock);
+  result = filesys_create(created_file, s);
+  lock_release(&file_sys_lock);
+  return result;
 }
 
 
