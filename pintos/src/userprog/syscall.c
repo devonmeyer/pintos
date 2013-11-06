@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "lib/user/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -22,6 +23,8 @@ static void system_exit(int s);
 
 static bool system_create(struct intr_frame *f, int * arguments);
 
+static int system_exec (int * arguments);
+
 static struct lock file_sys_lock;
 
 #define WRITE_CHUNK_SIZE 300
@@ -36,7 +39,6 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  printf ("system call!\n");
   int * num = f->esp;
   int arguments[3];
   printf ("System call is %d\n", *num);
@@ -53,9 +55,10 @@ syscall_handler (struct intr_frame *f)
     	break;
     case SYS_EXEC:
       get_arguments(f, 1, arguments);
-      // f->eax = system_exec((const char*)arguments[i]);
+      f->eax = system_exec(arguments);
     	break;
     case SYS_WAIT:
+      process_wait(0);
     	break;
     case SYS_CREATE:
       get_arguments(f, 2, arguments);
@@ -92,12 +95,40 @@ printf ("f->eax = %d", f->eax);
 
 }
 
-// static pid_t 
-// system_exec (const char *cmd_line)
-// {
-//   // pid is mapped exactly to tid, process_execute returns tid
-//   pid_t pid = (pid_t)process_execute(cmd_line);
-// }
+ static pid_t 
+ system_exec (int * arguments)
+ {
+   // pid is mapped exactly to tid, process_execute returns tid
+  if(!is_valid_memory_access(arguments[0])){
+    system_exit(-1);
+  }
+  const void * args = pagedir_get_page(thread_current()->pagedir, arguments[0]);
+  pid_t pid = ((pid_t) process_execute((char *) args));
+   // Create a child_process struct
+   /*Create new child_process with pid = B->pid, exit_status = -1, wait_called = false, has_exited = false;
+  Add child_process->process_element to A->children;
+  B->parent = A;
+  return B->pid;
+
+  struct child_process {
+  int pid;
+  int exit_status;
+  bool wait_called;
+  struct list_elem process_element;
+  bool has_exited;
+};
+
+  */
+  struct child_process cp;
+
+  cp.pid = pid;
+  cp.exit_status = -1;
+  cp.wait_called = false;
+  cp.has_exited = false;
+  list_push_back(&thread_current()->children, &cp.process_element);
+  set_parent_of_thread((int) pid);
+  return pid;
+ }
 
 /* 
 	The method called when the SYS_OPEN is called. 
