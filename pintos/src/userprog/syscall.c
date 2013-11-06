@@ -243,20 +243,43 @@ system_open(struct intr_frame *f, int * arguments){
 */
 static void
 system_read(struct intr_frame *f, int * arguments){
-  /*int fd = ((int) arguments[0]); 
+  int fd = ((int) arguments[0]); 
   const void *buffer = ((void *) arguments[1]);
   unsigned size = ((unsigned) arguments[2]);
   
   struct thread *t = thread_current ();
   
-  if (t->fd_array[fd].slot_is_empty == false) {
-    int fl = ((int)file_length (t->fd_array[fd].file));
-    f->eax = fl;
-  } else {
-    printf ("File with fd=%d was not open, exiting...\n",fd);
+  if (is_valid_memory_access (buffer) == false) {
+    printf ("Invalid memory access at %X, exiting...\n",buffer);
     f->eax = -1;
     system_exit(-1);
-  }*/
+  }
+
+  buffer = pagedir_get_page(thread_current()->pagedir, buffer);
+
+  if (fd == 0) {
+    // READ FROM CONSOLE
+    // uint8_t input_getc (void) 
+    /* TODO: Implement reading from the console. */
+
+  } else if (fd > 1) {
+    // READ FROM A FILE
+      if (t->fd_array[fd].slot_is_empty == false) {
+      //off_t file_read (struct file *, void *, off_t);
+      f->eax = file_read (t->fd_array[fd].file, buffer, ((off_t)size));
+    } else {
+      printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
+      f->eax = -1;
+      system_exit(-1);
+    }
+  } else {
+    // INVALID FILE DESCRIPTOR
+    printf ("Invalid file descriptor of %d, exiting...\n",fd);
+    f->eax = -1;
+    system_exit(-1);
+  }
+
+
 }
 
 
