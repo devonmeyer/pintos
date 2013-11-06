@@ -147,11 +147,44 @@ system_filesize(struct intr_frame *f, int * arguments)
 
 static void
 system_open(struct intr_frame *f, int * arguments){
-	//void *vaddr = ((char *) (f->esp)) + 1; // The first argument in the interrupt frame
-    char *vaddr = ((char *) arguments[0]);
-    
-    printf ("vaddr: %X\n",vaddr);
 
+    char *file_name = ((char *) arguments[0]);
+    
+    printf ("file name: %s\n",file_name);
+
+    struct file * open_file = filesys_open (file_name);
+    struct thread *t = thread_current ();
+
+    if (open_file != NULL) {
+      struct fd_info fd_information;
+      fd_information.file = open_file;
+      fd_information.slot_is_empty = false;
+      int fd;
+      int i;
+      for (i = 2; i < 18; i++) {
+        if (t->fd_array[i].slot_is_empty == true) {
+          fd = i;
+        }
+      }
+
+      // Set the file descriptor info at the fd slot in the array
+      t->fd_array[fd] = fd_information;
+   
+      // Return the file descriptor
+      f->eax = fd;
+
+    } else {
+      printf ("File named %s could not be opened, exiting...\n",file_name);
+      f->eax = -1;
+      system_exit(-1);
+    }
+
+
+// Cleary's old code:
+//     struct file *
+// filesys_open (const char *name)
+// {
+/*
 	if (is_valid_memory_access(vaddr) == true) {
 		// User Virtual Address -> Kernel Virtual Address -> Physical Address
 
@@ -183,6 +216,7 @@ system_open(struct intr_frame *f, int * arguments){
     printf ("invalid open call, will exit soon\n");
     system_exit(-1);
 	}
+  */
 }
 
 static void system_exit(int status){
