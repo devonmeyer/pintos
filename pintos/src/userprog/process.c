@@ -18,6 +18,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#define MAX_ARGS 25
+
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static char* parse_process_name (char *cmdline);
@@ -83,7 +85,12 @@ static void
 parse_process_args(const char *cmdline, void **esp)
 {
   int argc = 0;
-  char **argv = malloc(sizeof(PGSIZE));
+  char *argv[MAX_ARGS];
+  // char **argv = malloc(sizeof(PGSIZE));
+  int i;
+  for(i = 0; i < MAX_ARGS; i++) {
+    argv[i] = 0;
+  }
 
   char *delimiters = " ";
   char *token, *save_ptr;
@@ -98,35 +105,42 @@ parse_process_args(const char *cmdline, void **esp)
 
   // Push argv[i]
   char *argv_addresses[argc];
-  int i;
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, &argv[i], size);
+    printf("Address: %X, Data: %s, Name: argv[i][...]\n", *esp, *(char**)*esp);
     argv_addresses[i] = (char*)(*esp);
   }
 
   // TO DO word align
   align_user_stack(esp);
-
+  int null_ptr = 0;
   // Push &argv[argc]
+  // push_4bytes_onto_user_stack(esp, &argv[argc]);
   push_4bytes_onto_user_stack(esp, &argv[argc]);
+  printf("Address: %X, Data: %X, Name: argv[argc]\n", *esp, *(char**)*esp);
 
   // Push &argv[i]
   for(i = argc-1; i >= 0; i--) {
     push_4bytes_onto_user_stack(esp, &argv_addresses[i]);
+    printf("Address: %X, Data: %X, Name: argv[i]\n", *esp, *(char**)*esp);
   }
 
   // Push argv
   char *argv_pointer = (char*)(*esp);
   push_4bytes_onto_user_stack(esp, &argv_pointer);
+  printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
 
   // Push argc
   push_4bytes_onto_user_stack(esp, &argc);
+  printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
   
   // Push return address
-  push_4bytes_onto_user_stack(esp, &argv[argc]); // argv[argc] is already a null pointer so I pushed that as a NULL pointer instead of creating a new one
+  // push_4bytes_onto_user_stack(esp, &argv[argc]); // argv[argc] is already a null pointer so I pushed that as a NULL pointer instead of creating a new one
+  push_4bytes_onto_user_stack(esp, &null_ptr);
+  printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
 
-  free(argv);
+  // free(argv);
 }
 
 /* Decrements the user stack and copies data to the current address */
