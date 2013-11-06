@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 
 #define MAX_ARGS 25
 
@@ -214,12 +215,41 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  // TEMPORARY, FOR TESTING PURPOSES:
-  while (1) {
+  /*
 
-  }
+  A calls wait(B)
+  Do checks:
+    1. If B is not a member of A->children: return -1;
+    2. Find list element in A->children where elem->pid == B->pid -- if elem->wait_called == true: return -1;
   
-  return -1;
+  If we get to this point...
+  cp = child_process where cp->pid == B->pid
+  cp->wait_called = true;
+  while (!has_exited){
+    
+  }
+  return cp->exit_status;
+
+  */
+
+  struct thread * tc = thread_current();
+  printf("child pid = %d \n", child_tid);
+  printf("parent pid = %d \n", (int) tc->tid);
+  printf("parent name = %s \n", tc->name);
+  struct child_process * cp = get_child_of_thread(tc, child_tid);
+  if (cp == NULL){
+    printf ("child pid is not valid - returning -1\n");
+    return -1;
+  }
+  if (cp->wait_called){
+    printf ("wait has already been called on child - returning -1\n");
+    return -1;
+  }
+  while (!cp->has_exited){
+    barrier();
+  }
+  printf("Process has exited. returning status of %d\n", cp->exit_status);
+  return cp->exit_status;
 }
 
 /* Free the current process's resources. */

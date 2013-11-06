@@ -211,6 +211,10 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  t->parent = thread_current();
+  set_child_of_thread(t->tid);
+
+
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -813,9 +817,15 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 
+/*
+
+Sets the parent of the thread with the specified pid to be the current running thread.
+
+
 
 void
 set_parent_of_thread(int pid){
+  printf("pid to be set parent = %d, name of parent thread = %s\n", pid, thread_current()->name);
   struct list_elem *e;
   for (e = list_begin (&all_list); e != list_end (&all_list);
        e = list_next (e))
@@ -826,3 +836,50 @@ set_parent_of_thread(int pid){
       }
     }
 }
+*/
+/*
+
+Sets the specified pid as the child of the current running thread.
+
+*/
+
+void
+set_child_of_thread(int pid){
+  struct child_process * child = malloc(sizeof(struct child_process));
+  child->pid = pid;
+  child->exit_status = -1;
+  child->wait_called = false;
+  child->has_exited = false;
+  list_push_back(&thread_current()->children, &child->process_element);
+}
+
+struct child_process *
+get_child_of_thread(struct thread * t, int pid){
+  struct list_elem *e;
+  for (e = list_begin (&t->children); e != list_end (&t->children);
+       e = list_next (e))
+    {
+      struct child_process * child = list_entry (e, struct child_process, process_element);
+      if (pid == child->pid){
+        return child;
+      }
+    }
+  return NULL;
+}
+
+void
+set_exit_status_of_child(struct thread * parent, int pid, int status){
+  struct list_elem *e;
+  for (e = list_begin (&parent->children); e != list_end (&parent->children);
+       e = list_next (e))
+    {
+      struct child_process * child = list_entry (e, struct child_process, process_element);
+      if (pid == child->pid){
+        child->has_exited = true;
+        child->exit_status = status;
+
+      }
+    }
+}
+
+

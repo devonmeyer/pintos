@@ -51,14 +51,14 @@ syscall_handler (struct intr_frame *f)
     	get_arguments(f, 1, arguments);
       f->eax = (int) arguments[0];
       system_exit(arguments[0]);
-            // Need to set f->eax to arguments[0]
     	break;
     case SYS_EXEC:
       get_arguments(f, 1, arguments);
       f->eax = system_exec(arguments);
     	break;
     case SYS_WAIT:
-      process_wait(0);
+      get_arguments(f, 1, arguments);
+      f->eax = process_wait((tid_t) arguments[0]);
     	break;
     case SYS_CREATE:
       get_arguments(f, 2, arguments);
@@ -66,7 +66,6 @@ syscall_handler (struct intr_frame *f)
     	break;
     case SYS_REMOVE:
       get_arguments(f, 1, arguments);
-
     	break;
     case SYS_OPEN:
       get_arguments(f, 1, arguments);
@@ -101,29 +100,7 @@ syscall_handler (struct intr_frame *f)
   }
   const void * args = pagedir_get_page(thread_current()->pagedir, arguments[0]);
   pid_t pid = ((pid_t) process_execute((char *) args));
-   // Create a child_process struct
-   /*Create new child_process with pid = B->pid, exit_status = -1, wait_called = false, has_exited = false;
-  Add child_process->process_element to A->children;
-  B->parent = A;
-  return B->pid;
-
-  struct child_process {
-  int pid;
-  int exit_status;
-  bool wait_called;
-  struct list_elem process_element;
-  bool has_exited;
-};
-
-  */
-  struct child_process cp;
-
-  cp.pid = pid;
-  cp.exit_status = -1;
-  cp.wait_called = false;
-  cp.has_exited = false;
-  list_push_back(&thread_current()->children, &cp.process_element);
-  set_parent_of_thread((int) pid);
+  set_child_of_thread((int) pid);
   return pid;
  }
 
@@ -173,7 +150,9 @@ system_open(struct intr_frame *f, int * arguments){
 }
 
 static void system_exit(int status){
-  printf("%s: exit(%d)\n", thread_current()->name, status);
+  struct thread * current_thread = thread_current();
+  printf("%s: exit(%d)\n", current_thread->name, status);
+  set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
   thread_exit();
 }
 
