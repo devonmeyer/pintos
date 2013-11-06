@@ -10,6 +10,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
 #include "devices/shutdown.h"
 #include "process.h"
 
@@ -18,10 +19,10 @@ static bool is_valid_memory_access(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static void system_open(struct intr_frame *f, int * arguments);
+static void system_read(struct intr_frame *f, int * arguments);
 static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
 static void system_filesize(struct intr_frame *f, int * arguments);
-
 static bool system_create(struct intr_frame *f, int * arguments);
 
 static int system_exec (int * arguments);
@@ -78,6 +79,8 @@ syscall_handler (struct intr_frame *f)
       system_filesize(f, arguments);
     	break;
     case SYS_READ:
+      get_arguments(f, 3, arguments);
+      system_read(f, arguments);
     	break;
     case SYS_WRITE:
       get_arguments(f, 3, arguments);
@@ -93,9 +96,6 @@ syscall_handler (struct intr_frame *f)
     	thread_exit();  
       break;
   }
-
-printf ("f->eax = %d", f->eax);
-
 }
 
  static pid_t 
@@ -143,6 +143,16 @@ static void
 system_filesize(struct intr_frame *f, int * arguments)
 {
   int fd = ((int) arguments[0]); 
+  struct thread *t = thread_current ();
+  
+  if (t->fd_array[fd].slot_is_empty == false) {
+    int fl = ((int)file_length (t->fd_array[fd].file));
+    f->eax = fl;
+  } else {
+    printf ("File with fd=%d was not open, exiting...\n",fd);
+    f->eax = -1;
+    system_exit(-1);
+  }
 }
 
 static void
@@ -150,11 +160,15 @@ system_open(struct intr_frame *f, int * arguments){
 
     char *file_name = ((char *) arguments[0]);
     
-    printf ("file name: %s\n",file_name);
+    if (is_valid_memory_access(file_name) == false) {
+      printf ("Invalid memory access at %X, exiting...\n",file_name);
+      f->eax = -1;
+      system_exit(-1);
+    }
 
     struct file * open_file = filesys_open (file_name);
     struct thread *t = thread_current ();
-
+  
     if (open_file != NULL) {
       struct fd_info fd_information;
       fd_information.file = open_file;
@@ -164,6 +178,8 @@ system_open(struct intr_frame *f, int * arguments){
       for (i = 2; i < 18; i++) {
         if (t->fd_array[i].slot_is_empty == true) {
           fd = i;
+          printf ("chose fd=%d\n",fd);
+          break;
         }
       }
 
@@ -219,7 +235,33 @@ system_open(struct intr_frame *f, int * arguments){
   */
 }
 
-static void system_exit(int status){
+
+/* 
+  The method called when SYS_READ is called.
+  System call format:
+  int read (int fd, void *buffer, unsigned size)
+*/
+static void
+system_read(struct intr_frame *f, int * arguments){
+  /*int fd = ((int) arguments[0]); 
+  const void *buffer = ((void *) arguments[1]);
+  unsigned size = ((unsigned) arguments[2]);
+  
+  struct thread *t = thread_current ();
+  
+  if (t->fd_array[fd].slot_is_empty == false) {
+    int fl = ((int)file_length (t->fd_array[fd].file));
+    f->eax = fl;
+  } else {
+    printf ("File with fd=%d was not open, exiting...\n",fd);
+    f->eax = -1;
+    system_exit(-1);
+  }*/
+}
+
+
+static void 
+system_exit(int status){
   printf("%s: exit(%d)\n", thread_current()->name, status);
   thread_exit();
 }
