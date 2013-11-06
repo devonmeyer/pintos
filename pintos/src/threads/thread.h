@@ -112,16 +112,74 @@ struct thread
     
     struct fd_info fd_array[18];       /* The array of file descriptors, indexed by the file descriptor number.
                                           There are only 16 files in Pintos, but 0 and 1 are reserved fd values. */
+    struct thread * parent;
+
+    struct list children;
+
 #endif
 
     //uint32_t pid; // might not need this
-
 
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+struct child_process {
+  int pid;
+  int exit_status;
+  struct thread * child;
+  bool wait_called;
+  struct list_elem process_element;
+  bool has_exited;
+
+
+
+};
+
+
+// Exec
+/*
+  Called by A
+  Spawn new process B
+  Create new child_process with pid = B->pid, exit_status = -1, child = B, wait_called = false, has_exited = false;
+  Add child_process->process_element to A->children;
+  B->parent = A;
+  return B->pid;
+
+*/
+
+// Wait
+
+/*
+  A calls wait(B)
+  Do checks:
+    1. If B is not a member of A->children: return -1;
+    2. Find list element in A->children where elem->pid == B->pid -- if elem->wait_called == true: return -1;
+  
+  If we get to this point...
+  cp = child_process where cp->pid == B->pid
+  cp->wait_called = true;
+  while (!has_exited){
+    
+  }
+  return cp->exit_status;
+
+*/
+
+
+// Exit
+
+  /*
+
+  A calls exit
+
+  p = A->parent->elem (where elem->pid == A->pid)
+  p->exit_status = (-1 or passed exit_status)
+  p->has_exited = true;
+  thread_exit();
+
+  */
 
 
 

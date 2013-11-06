@@ -559,6 +559,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->wake_up_time = 0;
   list_init (&t->donated_priorities);
+  list_init (&t->children);
+  t->parent = NULL;
+
 
 
 #ifdef USERPROG
