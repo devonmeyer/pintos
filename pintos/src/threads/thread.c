@@ -570,7 +570,8 @@ init_thread (struct thread *t, const char *name, int priority)
 #ifdef USERPROG
   int i;
   struct fd_info fdi;
-  fdi.valid = 0;
+  fdi.file = NULL;
+  fdi.slot_is_empty = true;
   for (i = 2; i < 18; i++) {
     t->fd_array[i] = fdi;
   }

@@ -10,6 +10,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
 #include "devices/shutdown.h"
 #include "process.h"
 
@@ -18,9 +19,10 @@ static bool is_valid_memory_access(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static void system_open(struct intr_frame *f, int * arguments);
+static void system_read(struct intr_frame *f, int * arguments);
 static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
-
+static void system_filesize(struct intr_frame *f, int * arguments);
 static bool system_create(struct intr_frame *f, int * arguments);
 
 static int system_exec (int * arguments);
@@ -72,8 +74,12 @@ syscall_handler (struct intr_frame *f)
     	system_open(f, arguments);
     	break;
     case SYS_FILESIZE:
+      get_arguments(f, 1, arguments);
+      system_filesize(f, arguments);
     	break;
     case SYS_READ:
+      get_arguments(f, 3, arguments);
+      system_read(f, arguments);
     	break;
     case SYS_WRITE:
       get_arguments(f, 3, arguments);
@@ -109,13 +115,69 @@ syscall_handler (struct intr_frame *f)
   System call format:
   int open (const char *file)
 */
+
+static void 
+system_filesize(struct intr_frame *f, int * arguments)
+{
+  int fd = ((int) arguments[0]); 
+  struct thread *t = thread_current ();
+  
+  if (t->fd_array[fd].slot_is_empty == false) {
+    int fl = ((int)file_length (t->fd_array[fd].file));
+    f->eax = fl;
+  } else {
+    printf ("File with fd=%d was not open, exiting...\n",fd);
+    f->eax = -1;
+    system_exit(-1);
+  }
+}
+
 static void
 system_open(struct intr_frame *f, int * arguments){
-	//void *vaddr = ((char *) (f->esp)) + 1; // The first argument in the interrupt frame
-    char *vaddr = ((char *) arguments[0]);
-    
-    printf ("vaddr: %X\n",vaddr);
 
+    char *file_name = ((char *) arguments[0]);
+    
+    if (is_valid_memory_access(file_name) == false) {
+      printf ("Invalid memory access at %X, exiting...\n",file_name);
+      f->eax = -1;
+      system_exit(-1);
+    }
+
+    struct file * open_file = filesys_open (file_name);
+    struct thread *t = thread_current ();
+  
+    if (open_file != NULL) {
+      struct fd_info fd_information;
+      fd_information.file = open_file;
+      fd_information.slot_is_empty = false;
+      int fd;
+      int i;
+      for (i = 2; i < 18; i++) {
+        if (t->fd_array[i].slot_is_empty == true) {
+          fd = i;
+          printf ("chose fd=%d\n",fd);
+          break;
+        }
+      }
+
+      // Set the file descriptor info at the fd slot in the array
+      t->fd_array[fd] = fd_information;
+   
+      // Return the file descriptor
+      f->eax = fd;
+
+    } else {
+      printf ("File named %s could not be opened, exiting...\n",file_name);
+      f->eax = -1;
+      system_exit(-1);
+    }
+
+
+// Cleary's old code:
+//     struct file *
+// filesys_open (const char *name)
+// {
+/*
 	if (is_valid_memory_access(vaddr) == true) {
 		// User Virtual Address -> Kernel Virtual Address -> Physical Address
 
@@ -147,6 +209,7 @@ system_open(struct intr_frame *f, int * arguments){
     printf ("invalid open call, will exit soon\n");
     system_exit(-1);
 	}
+  */
 }
 
 static void system_exit(int status){
@@ -154,6 +217,52 @@ static void system_exit(int status){
   printf("%s: exit(%d)\n", current_thread->name, status);
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
   thread_exit();
+
+}
+/* 
+  The method called when SYS_READ is called.
+  System call format:
+  int read (int fd, void *buffer, unsigned size)
+*/
+static void
+system_read(struct intr_frame *f, int * arguments){
+  int fd = ((int) arguments[0]); 
+  const void *buffer = ((void *) arguments[1]);
+  unsigned size = ((unsigned) arguments[2]);
+  
+  struct thread *t = thread_current ();
+  
+  if (is_valid_memory_access (buffer) == false) {
+    printf ("Invalid memory access at %X, exiting...\n",buffer);
+    f->eax = -1;
+    system_exit(-1);
+  }
+
+  buffer = pagedir_get_page(thread_current()->pagedir, buffer);
+
+  if (fd == 0) {
+    // READ FROM CONSOLE
+    // uint8_t input_getc (void) 
+    /* TODO: Implement reading from the console. */
+
+  } else if (fd > 1) {
+    // READ FROM A FILE
+      if (t->fd_array[fd].slot_is_empty == false) {
+      //off_t file_read (struct file *, void *, off_t);
+      f->eax = file_read (t->fd_array[fd].file, buffer, ((off_t)size));
+    } else {
+      printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
+      f->eax = -1;
+      system_exit(-1);
+    }
+  } else {
+    // INVALID FILE DESCRIPTOR
+    printf ("Invalid file descriptor of %d, exiting...\n",fd);
+    f->eax = -1;
+    system_exit(-1);
+  }
+
+
 }
 
 
