@@ -48,10 +48,8 @@ syscall_handler (struct intr_frame *f)
   		break;
     case SYS_EXIT:
     	get_arguments(f, 1, arguments);
-      f->eax = arguments[0];
-      printf("%s: exit(%d)\n", thread_current()->name, (int) arguments[0]);
-    	thread_exit();
-      // Need to set f->eax to arguments[0]
+      system_exit(f, arguments);
+            // Need to set f->eax to arguments[0]
     	break;
     case SYS_EXEC:
       print_okay();
@@ -145,9 +143,15 @@ system_open(struct intr_frame *f, int * arguments){
 
 	} else {
     printf ("invalid open call, will exit soon\n");
-    f->eax = -1;
+    system_exit(-1);
     //process_exit ();
 	}
+}
+
+static void system_exit(intr_frame *f, int * arguments){
+  f->eax = arguments[0];
+  printf("%s: exit(%d)\n", thread_current()->name, (int) arguments[0]);
+  thread_exit();  
 }
 
 
@@ -165,8 +169,7 @@ system_write(struct intr_frame *f, int * arguments){
 
 
 if (is_valid_memory_access (buffer) == false) {
-    f->eax = -1; // Returns a file descriptor of -1 ->>>>> Is this correct???
-    process_exit ();
+    system_exit(-1);
 }
   buffer = pagedir_get_page(thread_current()->pagedir, buffer);
 
@@ -197,12 +200,16 @@ if (is_valid_memory_access (buffer) == false) {
 
 static bool system_create(struct intr_frame *f, int * arguments){
   bool result = false;
-  const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
-  const unsigned s = (unsigned) arguments[1];
-  lock_acquire(&file_sys_lock);
-  result = filesys_create(created_file, s);
-  lock_release(&file_sys_lock);
-  return result;
+  if(is_valid_memory_access((void*) arguments[0])){
+    const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
+    const unsigned s = (unsigned) arguments[1];
+    lock_acquire(&file_sys_lock);
+    result = filesys_create(created_file, s);
+    lock_release(&file_sys_lock);
+    return result;
+  } else {
+    system_exit(-1);
+  }
 }
 
 
@@ -225,7 +232,7 @@ is_valid_memory_access(const void *vaddr) {
 		return false;
 	} else if (is_kernel_vaddr(vaddr)) { 
 		// Pointer to Kernel Virtual Address Space
-    printf ("--- is user virtual address ---\n");
+    printf ("--- is kernel virtual address ---\n");
 		return false;
 	} else if (pagedir_get_page(thread_current ()->pagedir, vaddr) == NULL) { 
 		// Pointer to Unmapped Virtual Memory
