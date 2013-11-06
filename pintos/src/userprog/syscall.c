@@ -90,6 +90,9 @@ syscall_handler (struct intr_frame *f)
     	thread_exit();  
       break;
   }
+
+printf ("f->eax = %d", f->eax);
+
 }
 
 // static pid_t 
@@ -146,7 +149,7 @@ system_open(struct intr_frame *f, int * arguments){
 	} else {
     printf ("invalid open call, will exit soon\n");
     f->eax = -1;
-    //process_exit ();
+    //thread_exit();
 	}
 }
 
