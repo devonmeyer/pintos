@@ -42,17 +42,16 @@ syscall_handler (struct intr_frame *f)
   printf ("System call is %d\n", *num);
   switch(*num){
   	case SYS_HALT:
-  		print_okay();
       shutdown_power_off();
   		thread_exit();
   		break;
     case SYS_EXIT:
     	get_arguments(f, 1, arguments);
-      system_exit(f, arguments);
+      f->eax = (int) arguments[0];
+      system_exit(arguments[0]);
             // Need to set f->eax to arguments[0]
     	break;
     case SYS_EXEC:
-      print_okay();
       get_arguments(f, 1, arguments);
       // f->eax = system_exec((const char*)arguments[i]);
     	break;
@@ -97,11 +96,6 @@ syscall_handler (struct intr_frame *f)
 //   pid_t pid = (pid_t)process_execute(cmd_line);
 // }
 
-void
-print_okay(void){
-	printf("Got a system call that I expected!\n");
-}
-
 /* 
 	The method called when the SYS_OPEN is called. 
   System call format:
@@ -144,14 +138,12 @@ system_open(struct intr_frame *f, int * arguments){
 	} else {
     printf ("invalid open call, will exit soon\n");
     system_exit(-1);
-    //process_exit ();
 	}
 }
 
-static void system_exit(intr_frame *f, int * arguments){
-  f->eax = arguments[0];
-  printf("%s: exit(%d)\n", thread_current()->name, (int) arguments[0]);
-  thread_exit();  
+static void system_exit(int status){
+  printf("%s: exit(%d)\n", thread_current()->name, status);
+  thread_exit();
 }
 
 
