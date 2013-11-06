@@ -20,6 +20,7 @@ static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static void system_open(struct intr_frame *f, int * arguments);
 static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
+static void system_filesize(struct intr_frame *f, int * arguments);
 
 static bool system_create(struct intr_frame *f, int * arguments);
 
@@ -73,6 +74,8 @@ syscall_handler (struct intr_frame *f)
     	system_open(f, arguments);
     	break;
     case SYS_FILESIZE:
+      get_arguments(f, 1, arguments);
+      system_filesize(f, arguments);
     	break;
     case SYS_READ:
     	break;
@@ -135,6 +138,13 @@ printf ("f->eax = %d", f->eax);
   System call format:
   int open (const char *file)
 */
+
+static void 
+system_filesize(struct intr_frame *f, int * arguments)
+{
+  int fd = ((int) arguments[0]); 
+}
+
 static void
 system_open(struct intr_frame *f, int * arguments){
 	//void *vaddr = ((char *) (f->esp)) + 1; // The first argument in the interrupt frame

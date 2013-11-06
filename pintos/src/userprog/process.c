@@ -104,12 +104,12 @@ parse_process_args(const char *cmdline, void **esp)
   align_user_stack(esp);
 
   // Push argv[i]
-  char *argv_addresses[argc];
+  void *argv_addresses[argc];
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, &argv[i], size);
     printf("Address: %X, Data: %s, Name: argv[i][...]\n", *esp, *(char**)*esp);
-    argv_addresses[i] = (char*)(*esp);
+    argv_addresses[i] = (void*)(*esp);
   }
 
   // TO DO word align
@@ -130,6 +130,7 @@ parse_process_args(const char *cmdline, void **esp)
   char *argv_pointer = (char*)(*esp);
   push_4bytes_onto_user_stack(esp, &argv_pointer);
   printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
+  // printf("TEST: %s\n", *(char**)***esp);
 
   // Push argc
   push_4bytes_onto_user_stack(esp, &argc);
