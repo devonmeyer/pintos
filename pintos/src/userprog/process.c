@@ -48,13 +48,13 @@ process_execute (const char *cmdline)
   /* Parse process name from command line input 
      and pass it to thread_create */
   char *process_name = parse_process_name(cmdline);
-
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
   // printf("Process name: %s\n", process_name);
   // tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
+  if (tid == TID_ERROR){
     palloc_free_page (fn_copy); 
+  }
   return tid;
 }
 

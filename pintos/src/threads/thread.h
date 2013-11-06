@@ -128,13 +128,9 @@ struct thread
 struct child_process {
   int pid;
   int exit_status;
-  struct thread * child;
   bool wait_called;
   struct list_elem process_element;
   bool has_exited;
-
-
-
 };
 
 
@@ -142,7 +138,7 @@ struct child_process {
 /*
   Called by A
   Spawn new process B
-  Create new child_process with pid = B->pid, exit_status = -1, child = B, wait_called = false, has_exited = false;
+  Create new child_process with pid = B->pid, exit_status = -1, wait_called = false, has_exited = false;
   Add child_process->process_element to A->children;
   B->parent = A;
   return B->pid;
@@ -200,6 +196,8 @@ struct prio {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
+void set_parent_of_thread(int pid);
 
 void thread_init (void);
 void thread_start (void);

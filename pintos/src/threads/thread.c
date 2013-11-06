@@ -20,13 +20,13 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* List of processes in THREAD_READY state, that is, processes
-   that are ready to run but not actually running. */
-static struct list ready_list;
-
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+
+/* List of processes in THREAD_READY state, that is, processes
+   that are ready to run but not actually running. */
+static struct list ready_list;
 
 /* Lock used for the ready_list. */
 static struct lock ready_list_lock;
@@ -563,7 +563,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = NULL;
 
 
-
 #ifdef USERPROG
   int i;
   struct fd_info fdi;
@@ -812,3 +811,18 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+
+
+void
+set_parent_of_thread(int pid){
+  struct list_elem *e;
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if(((int) t->tid) == (pid)){
+        t->parent = thread_current();
+      }
+    }
+}
