@@ -241,6 +241,7 @@ system_open(int * arguments){
   
     if (open_file != NULL) {
       struct fd_info * fd_information = malloc(sizeof(struct fd_info));
+      fd_information->file_name = file_name;
       fd_information->file = open_file;
       int fd;
       int i;
@@ -383,6 +384,15 @@ static bool system_create(int * arguments){
   if(!is_valid_memory_access(file_name)) {
     printf("Invalid system_create pointer, exiting...\n");
     system_exit(-1);
+  }
+
+  int i;
+  struct thread * t = thread_current ();
+  for (i=0; i < 18; i++) {
+    if (t->fd_array[i] != NULL && t->fd_array[i]->file_name == file_name) {
+      printf("File named %d already exists, exiting...\n",file_name);
+      system_exit(-1);
+    }
   }
 
   if (strlen(file_name) != 0) {

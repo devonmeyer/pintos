@@ -30,6 +30,7 @@ typedef int tid_t;
   struct fd_info {
       int size;
       void *start_addr;
+      char *file_name;
       //bool slot_is_empty;
       struct file *file;
       // size, name, begin addr, offset, etc. look at wherever the FD is stored later
