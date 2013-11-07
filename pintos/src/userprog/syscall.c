@@ -272,7 +272,7 @@ system_open(int * arguments){
 
     } else {
       printf ("File named %s could not be opened, exiting...\n",file_name);
-      system_exit(-1);
+      return -1;
     }
 }
 
