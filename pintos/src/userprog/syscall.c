@@ -143,7 +143,9 @@ system_close(int * arguments)
 static unsigned 
 system_tell(int * arguments)
 {
-  int fd = ((int) arguments[0]); 
+  int fd = ((int) arguments[0]);
+  validate_file_descriptor(fd); 
+  
   struct thread *t = thread_current ();
   
   if (t->fd_array[fd] != NULL) {
@@ -165,6 +167,8 @@ static int
 system_filesize(int * arguments)
 {
   int fd = ((int) arguments[0]); 
+  validate_file_descriptor(fd);
+
   struct thread *t = thread_current ();
   
   if (t->fd_array[fd] == NULL) {
@@ -231,6 +235,8 @@ static void system_exit(int status){
 static int
 system_read(int * arguments){
   int fd = ((int) arguments[0]); 
+  validate_file_descriptor(fd);
+
   const void *buffer = ((void *) arguments[1]);
   unsigned size = ((unsigned) arguments[2]);
   
@@ -276,6 +282,8 @@ static unsigned
 system_write(int * arguments){
   // Assumes that items are pushed onto the stack from right to left
   int fd = ((int) arguments[0]); 
+  validate_file_descriptor(fd);
+
   const void *buffer = ((void *) arguments[1]);
   unsigned size = ((unsigned) arguments[2]);
   unsigned size_written = 0;
@@ -334,6 +342,12 @@ static bool system_create(int * arguments){
 */
 static void
 validate_file_descriptor(const int fd) {
+
+  if (fd == 0 || fd == 1) {
+    // STDIN and STDOUT File Descriptors are valid
+    return;
+  }
+
   if (fd < 0 || fd >= 18) {
     printf("Invalid fie descriptor of value %d.\n");
     system_exit(-1);
