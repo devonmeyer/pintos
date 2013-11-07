@@ -148,10 +148,16 @@ system_close_all(){
 static void
 system_close(int * arguments) 
 {
-  int fd = ((int) arguments[0]); 
+  int fd = ((int) arguments[0]);
+  if (fd == 0 || fd == 1) {
+    printf ("Cannot system_close(%d), exiting...\n",fd);
+    system_exit(-1);
+  } 
+
   validate_file_descriptor(fd);
   struct thread *t = thread_current ();
   file_close (t->fd_array[fd]->file);
+  t->fd_array[fd] = NULL;
 }
 
  static pid_t 
