@@ -104,6 +104,8 @@ syscall_handler (struct intr_frame *f)
         break;
     }
     printf("System call finished.\n");
+  } else {
+    system_exit(-1);
   }
 }
 
