@@ -17,6 +17,7 @@
 
 static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
+static void validate_file_descriptor(const int fd);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static int system_open(int * arguments);
@@ -110,7 +111,7 @@ system_close_all(){
   int i = 0;
   struct thread * holder = thread_current();
   for(i = 0; i < 18; i++){
-    if(!holder->fd_array[i] == NULL){
+    if(holder->fd_array[i] != NULL){
       system_close(&i);
     }
   }
@@ -121,14 +122,9 @@ static void
 system_close(int * arguments) 
 {
   int fd = ((int) arguments[0]); 
-  // Need to have fd check
+  validate_file_descriptor(fd);
   struct thread *t = thread_current ();
-  if (t->fd_array[fd] != NULL) {
-    file_close (t->fd_array[fd]->file);
-  } else {
-    printf ("File with fd=%d was not open, exiting...\n",fd);
-    system_exit(-1);
-  }
+  file_close (t->fd_array[fd]->file);
 }
 
  static pid_t 
@@ -332,6 +328,20 @@ static bool system_create(int * arguments){
   }
 }
 
+
+/* 
+  Validates the file descriptor.  Calls system_exit if invalid file descriptor.
+*/
+static void
+validate_file_descriptor(const int fd) {
+  if (fd < 0 || fd >= 18) {
+    printf("Invalid fie descriptor of value %d.\n");
+    system_exit(-1);
+  } else if (thread_current ()->fd_array[fd] == NULL) {
+    printf("File descriptor %d not found in the fd_array.\n", fd);
+    system_exit(-1);
+  }
+}
 
 
 /* 
