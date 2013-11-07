@@ -380,7 +380,12 @@ static bool system_create(int * arguments){
   const char *file_name = ((char*) arguments[0]);
   const unsigned initial_size = ((unsigned) arguments[1]);
   
-  if(is_valid_memory_access(file_name) && strlen(file_name) != 0) {
+  if(!is_valid_memory_access(file_name)) {
+    printf("Invalid system_create pointer, exiting...\n");
+    system_exit(-1);
+  }
+
+  if (strlen(file_name) != 0) {
     //const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
     lock_acquire(&file_sys_lock);
     result = filesys_create(file_name, initial_size);
