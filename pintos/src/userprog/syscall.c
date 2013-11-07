@@ -7,6 +7,7 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 #include "threads/pte.h"
+#include "devices/input.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "filesys/filesys.h"
@@ -219,6 +220,8 @@ static void system_exit(int status){
   thread_exit();
 
 }
+
+
 /* 
   The method called when SYS_READ is called.
   System call format:
@@ -243,13 +246,14 @@ system_read(struct intr_frame *f, int * arguments){
   if (fd == 0) {
     // READ FROM CONSOLE
     // uint8_t input_getc (void) 
+    buffer = input_getc ();
     /* TODO: Implement reading from the console. */
 
-  } else if (fd > 1) {
+  } else if (fd > 1 && fd < 18) {
     // READ FROM A FILE
       if (t->fd_array[fd].slot_is_empty == false) {
       //off_t file_read (struct file *, void *, off_t);
-      f->eax = file_read (t->fd_array[fd].file, buffer, ((off_t)size));
+      f->eax = file_read (t->fd_array[fd].file, buffer, size);
     } else {
       printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
       f->eax = -1;
@@ -261,8 +265,6 @@ system_read(struct intr_frame *f, int * arguments){
     f->eax = -1;
     system_exit(-1);
   }
-
-
 }
 
 
@@ -351,7 +353,7 @@ is_valid_memory_access(const void *vaddr) {
 		return false;
 	}
 
-  printf ("--- valid_memory_access ---\n");
+  //printf ("--- valid_memory_access ---\n");
 
 
 	return true;
