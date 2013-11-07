@@ -25,6 +25,7 @@ static void system_exit(int s);
 static void system_filesize(struct intr_frame *f, int * arguments);
 static bool system_create(struct intr_frame *f, int * arguments);
 static void system_tell(struct intr_frame *f, int * arguments);
+static void system_close(int * arguments);
 
 static int system_exec (int * arguments);
 
@@ -93,10 +94,26 @@ syscall_handler (struct intr_frame *f)
       system_tell(f, arguments);
     	break;
     case SYS_CLOSE:
+      get_arguments(f, 1, arguments);
+      system_close(arguments);
     	break;
     default:
     	thread_exit();  
       break;
+  }
+}
+
+static void
+system_close(int * arguments) 
+{
+  int fd = ((int) arguments[0]); 
+  struct thread *t = thread_current ();
+  
+  if (t->fd_array[fd].slot_is_empty == false) {
+    file_close (t->fd_array[fd].file);
+  } else {
+    printf ("File with fd=%d was not open, exiting...\n",fd);
+    system_exit(-1);
   }
 }
 
