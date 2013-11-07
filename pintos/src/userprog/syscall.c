@@ -24,6 +24,7 @@ static void system_write(struct intr_frame *f, int * arguments);
 static void system_exit(int s);
 static void system_filesize(struct intr_frame *f, int * arguments);
 static bool system_create(struct intr_frame *f, int * arguments);
+static void system_tell(struct intr_frame *f, int * arguments);
 
 static int system_exec (int * arguments);
 
@@ -89,6 +90,8 @@ syscall_handler (struct intr_frame *f)
     case SYS_SEEK:
     	break;
     case SYS_TELL:
+      get_arguments(f, 1, arguments);
+      system_tell(f, arguments);
     	break;
     case SYS_CLOSE:
     	break;
@@ -132,6 +135,22 @@ syscall_handler (struct intr_frame *f)
   set_parent_of_thread((int) pid);
   return pid;
  }
+
+static void 
+system_tell(struct intr_frame *f, int * arguments)
+{
+  int fd = ((int) arguments[0]); 
+  struct thread *t = thread_current ();
+  
+  if (t->fd_array[fd].slot_is_empty == false) {
+    unsigned tell = ((unsigned)file_tell (t->fd_array[fd].file));
+    f->eax = tell;
+  } else {
+    printf ("File with fd=%d was not open, exiting...\n",fd);
+    f->eax = -1;
+    system_exit(-1);
+  }
+}
 
 /* 
 	The method called when the SYS_OPEN is called. 
