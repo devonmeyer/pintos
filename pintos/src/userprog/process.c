@@ -38,7 +38,7 @@ process_execute (const char *cmdline)
 {
   char *fn_copy;
   tid_t tid;
-
+  printf("%s\n", cmdline);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);

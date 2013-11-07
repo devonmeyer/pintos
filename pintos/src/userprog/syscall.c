@@ -17,12 +17,12 @@
 
 static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
+static void validate_file_descriptor(const int fd);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static int system_open(int * arguments);
 static int system_read(int * arguments);
 static unsigned system_write(int * arguments);
-static void system_exit(int s);
 static int system_filesize(int * arguments);
 static bool system_create(int * arguments);
 static unsigned system_tell(int * arguments);
@@ -45,64 +45,66 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  int * num = f->esp;
-  int arguments[3];
-  switch(*num){
-  	case SYS_HALT:
-      shutdown_power_off();
-  		thread_exit();
-  		break;
-    case SYS_EXIT:
-    	get_arguments(f, 1, arguments);
-      f->eax = (int) arguments[0];
-      system_exit(arguments[0]);
-    	break;
-    case SYS_EXEC:
-      get_arguments(f, 1, arguments);
-      f->eax = system_exec(arguments);
-    	break;
-    case SYS_WAIT:
-      get_arguments(f, 1, arguments);
-      f->eax = process_wait((tid_t) arguments[0]);
-    	break;
-    case SYS_CREATE:
-      get_arguments(f, 2, arguments);
-      f->eax = system_create(arguments);
-    	break;
-    case SYS_REMOVE:
-      get_arguments(f, 1, arguments);
-    	break;
-    case SYS_OPEN:
-      get_arguments(f, 1, arguments);
-    	f->eax = system_open(arguments);
-    	break;
-    case SYS_FILESIZE:
-      get_arguments(f, 1, arguments);
-      f->eax = system_filesize(arguments);
-    	break;
-    case SYS_READ:
-      get_arguments(f, 3, arguments);
-      f->eax = system_read(arguments);
-    	break;
-    case SYS_WRITE:
-      get_arguments(f, 3, arguments);
-      f->eax = system_write(arguments);
-    	break;
-    case SYS_SEEK:
-      get_arguments(f, 2, arguments);
-      system_seek(f, arguments);
-    	break;
-    case SYS_TELL:
-      get_arguments(f, 1, arguments);
-      f->eax = system_tell(arguments);
-    	break;
-    case SYS_CLOSE:
-      get_arguments(f, 1, arguments);
-      system_close(arguments);
-    	break;
-    default:
-    	thread_exit();  
-      break;
+  if(is_valid_memory_access((const void *) f->esp)){
+    int * num = f->esp;
+    int arguments[3];
+    printf("Got system call number %d\n", *num);
+    switch(*num){
+    	case SYS_HALT:
+        shutdown_power_off();
+    		thread_exit();
+    		break;
+      case SYS_EXIT:
+      	get_arguments(f, 1, arguments);
+        f->eax = (int) arguments[0];
+        system_exit(arguments[0]);
+      	break;
+      case SYS_EXEC:
+        get_arguments(f, 1, arguments);
+        f->eax = system_exec(arguments);
+      	break;
+      case SYS_WAIT:
+        get_arguments(f, 1, arguments);
+        f->eax = process_wait((tid_t) arguments[0]);
+      	break;
+      case SYS_CREATE:
+        get_arguments(f, 2, arguments);
+        f->eax = system_create(arguments);
+      	break;
+      case SYS_REMOVE:
+        get_arguments(f, 1, arguments);
+      	break;
+      case SYS_OPEN:
+        get_arguments(f, 1, arguments);
+      	f->eax = system_open(arguments);
+      	break;
+      case SYS_FILESIZE:
+        get_arguments(f, 1, arguments);
+        f->eax = system_filesize(arguments);
+      	break;
+      case SYS_READ:
+        get_arguments(f, 3, arguments);
+        f->eax = system_read(arguments);
+      	break;
+      case SYS_WRITE:
+        get_arguments(f, 3, arguments);
+        f->eax = system_write(arguments);
+      	break;
+      case SYS_SEEK:
+      	break;
+      case SYS_TELL:
+        get_arguments(f, 1, arguments);
+        f->eax = system_tell(arguments);
+      	break;
+      case SYS_CLOSE:
+        get_arguments(f, 1, arguments);
+        system_close(arguments);
+      	break;
+      default:
+      	thread_exit();  
+        break;
+    }
+    printf("System call finished.\n");
   }
 }
 
@@ -127,7 +129,7 @@ system_close_all(){
   int i = 0;
   struct thread * holder = thread_current();
   for(i = 0; i < 18; i++){
-    if(!holder->fd_array[i].slot_is_empty){
+    if(holder->fd_array[i] != NULL){
       system_close(&i);
     }
   }
@@ -138,14 +140,9 @@ static void
 system_close(int * arguments) 
 {
   int fd = ((int) arguments[0]); 
+  validate_file_descriptor(fd);
   struct thread *t = thread_current ();
-  
-  if (t->fd_array[fd].slot_is_empty == false) {
-    file_close (t->fd_array[fd].file);
-  } else {
-    printf ("File with fd=%d was not open, exiting...\n",fd);
-    system_exit(-1);
-  }
+  file_close (t->fd_array[fd]->file);
 }
 
  static pid_t 
@@ -164,11 +161,13 @@ system_close(int * arguments)
 static unsigned 
 system_tell(int * arguments)
 {
-  int fd = ((int) arguments[0]); 
+  int fd = ((int) arguments[0]);
+  validate_file_descriptor(fd); 
+  
   struct thread *t = thread_current ();
   
-  if (t->fd_array[fd].slot_is_empty == false) {
-    unsigned tell = ((unsigned)file_tell (t->fd_array[fd].file));
+  if (t->fd_array[fd] != NULL) {
+    unsigned tell = ((unsigned)file_tell (t->fd_array[fd]->file));
     return tell;
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
@@ -186,10 +185,12 @@ static int
 system_filesize(int * arguments)
 {
   int fd = ((int) arguments[0]); 
+  validate_file_descriptor(fd);
+
   struct thread *t = thread_current ();
   
-  if (t->fd_array[fd].slot_is_empty == false) {
-    int fl = ((int)file_length (t->fd_array[fd].file));
+  if (t->fd_array[fd] == NULL) {
+    int fl = ((int)file_length (t->fd_array[fd]->file));
     return fl;
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
@@ -211,13 +212,12 @@ system_open(int * arguments){
     struct thread *t = thread_current ();
   
     if (open_file != NULL) {
-      struct fd_info fd_information;
-      fd_information.file = open_file;
-      fd_information.slot_is_empty = false;
+      struct fd_info * fd_information = malloc(sizeof(struct fd_info));
+      fd_information->file = open_file;
       int fd;
       int i;
       for (i = 2; i < 18; i++) {
-        if (t->fd_array[i].slot_is_empty == true) {
+        if (t->fd_array[i] == NULL) {
           fd = i;
           //printf ("chose fd=%d\n",fd);
           break;
@@ -236,12 +236,12 @@ system_open(int * arguments){
     }
 }
 
-static void system_exit(int status){
+void
+system_exit(int status){
   struct thread * current_thread = thread_current();
   printf("%s: exit(%d)\n", current_thread->name, status);
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
   thread_exit();
-
 }
 
 
@@ -253,6 +253,8 @@ static void system_exit(int status){
 static int
 system_read(int * arguments){
   int fd = ((int) arguments[0]); 
+  validate_file_descriptor(fd);
+
   const void *buffer = ((void *) arguments[1]);
   unsigned size = ((unsigned) arguments[2]);
   
@@ -273,10 +275,8 @@ system_read(int * arguments){
 
   } else if (fd > 1 && fd < 18) {
     // READ FROM A FILE
-      if (t->fd_array[fd].slot_is_empty == false) {
-      //off_t file_read (struct file *, void *, off_t);
-      
-      return file_read (t->fd_array[fd].file, buffer, size);
+      if (t->fd_array[fd] != NULL) {      
+      return file_read (t->fd_array[fd]->file, buffer, size);
     } else {
       printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
       system_exit(-1);
@@ -298,20 +298,26 @@ static unsigned
 system_write(int * arguments){
   // Assumes that items are pushed onto the stack from right to left
   int fd = ((int) arguments[0]); 
+  validate_file_descriptor(fd);
+
   const void *buffer = ((void *) arguments[1]);
   unsigned size = ((unsigned) arguments[2]);
   unsigned size_written = 0;
 
 
-if (is_valid_memory_access (buffer) == false) {
+  if (is_valid_memory_access (buffer) == false) {
     system_exit(-1);
-}
+  }
+
+  if (fd == 0) {
+    printf("File descriptor of 0 is invalid for system_write().\n");
+    system_exit(-1);
+  }
+
   buffer = pagedir_get_page(thread_current()->pagedir, buffer);
 
-  // putbuf (const char *buffer, size_t n), defined in console.c
-  ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
   if (fd == 1) {
-    // Writing to the console (like a print statement)
+    // WRITE TO THE CONSOLE
     if (size <= WRITE_CHUNK_SIZE) {
       putbuf (buffer, size);
       return size;
@@ -325,31 +331,60 @@ if (is_valid_memory_access (buffer) == false) {
       return size_written;
     }
   } else {
-    // Writing to a file with a file descriptor fd
-
+    // WRITE TO A FILE
     lock_acquire (&file_sys_lock);
-    //file_write ();
-    lock_release (&file_sys_lock);    
-    //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
-    
-  }
+    size_written = file_write (thread_current ()->fd_array[fd]->file, buffer, size);
+    lock_release (&file_sys_lock);
 
+    return size_written;
+  }
 }
 
 static bool system_create(int * arguments){
   bool result = false;
-  if(is_valid_memory_access((void*) arguments[0])){
-    const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
-    const unsigned s = (unsigned) arguments[1];
+  const char *file_name = ((char*) arguments[0]);
+  const unsigned initial_size = ((unsigned) arguments[1]);
+  
+  if(is_valid_memory_access(file_name) && strlen(file_name) != 0) {
+    //const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
     lock_acquire(&file_sys_lock);
-    result = filesys_create(created_file, s);
+    result = filesys_create(file_name, initial_size);
     lock_release(&file_sys_lock);
+  }
     return result;
-  } else {
+}
+
+
+// /* 
+//   Validates the file name.
+// */
+// static void
+// validate_file_name (const char * file_name) {
+//   if (*file_name == "") {
+//     printf("Invalid file name: %s, exiting...\n", *file_name);
+//     system_exit(-1);
+//   }
+// }
+
+/* 
+  Validates the file descriptor.  Calls system_exit if invalid file descriptor.
+*/
+static void
+validate_file_descriptor(const int fd) {
+
+  if (fd == 0 || fd == 1) {
+    // STDIN and STDOUT File Descriptors are valid
+    return;
+  }
+
+  if (fd < 0 || fd >= 18) {
+    printf("Invalid fie descriptor of value %d.\n");
+    system_exit(-1);
+  } else if (thread_current ()->fd_array[fd] == NULL) {
+    printf("File descriptor %d not found in the fd_array.\n", fd);
     system_exit(-1);
   }
 }
-
 
 
 /* 
@@ -357,12 +392,6 @@ static bool system_create(int * arguments){
 */
 static bool
 is_valid_memory_access(const void *vaddr) {
-
-  // Use ASSERT statements for debugging, then remove before publishing code:
-	//ASSERT (vaddr != NULL);
-	//ASSERT (!is_kernel_vaddr(vaddr));
-	//ASSERT (pagedir_get_page(thread_current ()->pagedir,vaddr) != NULL);
-
 
 	if (vaddr == NULL) {
 		// Null Pointer
@@ -377,9 +406,6 @@ is_valid_memory_access(const void *vaddr) {
     printf ("--- Unmapped ---\n");
 		return false;
 	}
-
-  //printf ("--- valid_memory_access ---\n");
-
 
 	return true;
 }
