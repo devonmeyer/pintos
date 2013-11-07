@@ -115,8 +115,10 @@ system_seek(struct intr_frame *f, int * arguments)
   int position = ((off_t) arguments[1]);
   struct thread *t = thread_current ();
 
-  if(t->fd_array[fd].slot_is_empty == false) {
-    struct file * open_file = t->fd_array[fd].file;
+  validate_file_descriptor(fd);
+
+  if(t->fd_array[fd] != NULL) {
+    struct file * open_file = t->fd_array[fd]->file;
     file_seek(open_file, position);
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
