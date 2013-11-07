@@ -19,13 +19,13 @@ static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
-static void system_open(struct intr_frame *f, int * arguments);
-static void system_read(struct intr_frame *f, int * arguments);
-static void system_write(struct intr_frame *f, int * arguments);
+static int system_open(int * arguments);
+static int system_read(int * arguments);
+static unsigned system_write(int * arguments);
 static void system_exit(int s);
-static void system_filesize(struct intr_frame *f, int * arguments);
-static bool system_create(struct intr_frame *f, int * arguments);
-static void system_tell(struct intr_frame *f, int * arguments);
+static int system_filesize(int * arguments);
+static bool system_create(int * arguments);
+static unsigned system_tell(int * arguments);
 static void system_close(int * arguments);
 static void system_seek(struct intr_frame *f, int * arguments);
 
@@ -47,7 +47,6 @@ syscall_handler (struct intr_frame *f)
 {
   int * num = f->esp;
   int arguments[3];
-  printf ("System call is %d\n", *num);
   switch(*num){
   	case SYS_HALT:
       shutdown_power_off();
@@ -68,26 +67,26 @@ syscall_handler (struct intr_frame *f)
     	break;
     case SYS_CREATE:
       get_arguments(f, 2, arguments);
-      f->eax = system_create(f, arguments);
+      f->eax = system_create(arguments);
     	break;
     case SYS_REMOVE:
       get_arguments(f, 1, arguments);
     	break;
     case SYS_OPEN:
       get_arguments(f, 1, arguments);
-    	system_open(f, arguments);
+    	f->eax = system_open(arguments);
     	break;
     case SYS_FILESIZE:
       get_arguments(f, 1, arguments);
-      system_filesize(f, arguments);
+      f->eax = system_filesize(arguments);
     	break;
     case SYS_READ:
       get_arguments(f, 3, arguments);
-      system_read(f, arguments);
+      f->eax = system_read(arguments);
     	break;
     case SYS_WRITE:
       get_arguments(f, 3, arguments);
-      system_write(f, arguments);
+      f->eax = system_write(arguments);
     	break;
     case SYS_SEEK:
       get_arguments(f, 2, arguments);
@@ -95,7 +94,7 @@ syscall_handler (struct intr_frame *f)
     	break;
     case SYS_TELL:
       get_arguments(f, 1, arguments);
-      system_tell(f, arguments);
+      f->eax = system_tell(arguments);
     	break;
     case SYS_CLOSE:
       get_arguments(f, 1, arguments);
@@ -124,6 +123,18 @@ system_seek(struct intr_frame *f, int * arguments)
 }
 
 static void
+system_close_all(){
+  int i = 0;
+  struct thread * holder = thread_current();
+  for(i = 0; i < 18; i++){
+    if(!holder->fd_array[i].slot_is_empty){
+      system_close(&i);
+    }
+  }
+}
+
+
+static void
 system_close(int * arguments) 
 {
   int fd = ((int) arguments[0]); 
@@ -150,18 +161,17 @@ system_close(int * arguments)
   return pid;
  }
 
-static void 
-system_tell(struct intr_frame *f, int * arguments)
+static unsigned 
+system_tell(int * arguments)
 {
   int fd = ((int) arguments[0]); 
   struct thread *t = thread_current ();
   
   if (t->fd_array[fd].slot_is_empty == false) {
     unsigned tell = ((unsigned)file_tell (t->fd_array[fd].file));
-    f->eax = tell;
+    return tell;
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
-    f->eax = -1;
     system_exit(-1);
   }
 }
@@ -172,30 +182,28 @@ system_tell(struct intr_frame *f, int * arguments)
   int open (const char *file)
 */
 
-static void 
-system_filesize(struct intr_frame *f, int * arguments)
+static int 
+system_filesize(int * arguments)
 {
   int fd = ((int) arguments[0]); 
   struct thread *t = thread_current ();
   
   if (t->fd_array[fd].slot_is_empty == false) {
     int fl = ((int)file_length (t->fd_array[fd].file));
-    f->eax = fl;
+    return fl;
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
-    f->eax = -1;
     system_exit(-1);
   }
 }
 
-static void
-system_open(struct intr_frame *f, int * arguments){
+static int
+system_open(int * arguments){
 
     char *file_name = ((char *) arguments[0]);
     
     if (is_valid_memory_access(file_name) == false) {
       printf ("Invalid memory access at %X, exiting...\n",file_name);
-      f->eax = -1;
       system_exit(-1);
     }
 
@@ -211,7 +219,7 @@ system_open(struct intr_frame *f, int * arguments){
       for (i = 2; i < 18; i++) {
         if (t->fd_array[i].slot_is_empty == true) {
           fd = i;
-          printf ("chose fd=%d\n",fd);
+          //printf ("chose fd=%d\n",fd);
           break;
         }
       }
@@ -220,52 +228,12 @@ system_open(struct intr_frame *f, int * arguments){
       t->fd_array[fd] = fd_information;
    
       // Return the file descriptor
-      f->eax = fd;
+      return fd;
 
     } else {
       printf ("File named %s could not be opened, exiting...\n",file_name);
-      f->eax = -1;
       system_exit(-1);
     }
-
-
-// Cleary's old code:
-//     struct file *
-// filesys_open (const char *name)
-// {
-/*
-	if (is_valid_memory_access(vaddr) == true) {
-		// User Virtual Address -> Kernel Virtual Address -> Physical Address
-
-    struct thread *t = thread_current ();
-		char *kvaddr = pagedir_get_page(t->pagedir,vaddr); 
- 
-    // char val = *kvaddr; // DEREFERENCING (try & debug)
-
-    // TO BE IMPLEMENTED LATER:
-    struct fd_info fdi;
-    fdi.start_addr = kvaddr;
-    int fd;
-
-    // Choose an available file descriptor
-    int i;
-    for (i = 2; i < 18; i++) {
-      if (t->fd_array[i].valid == 0) {
-        fd = i;
-      }
-    }
-
-    // Set the file descriptor info at the fd slot in the array
-    t->fd_array[fd] = fdi;
-   
-    // Return the file descriptor number
-    f->eax = fd;
-
-	} else {
-    printf ("invalid open call, will exit soon\n");
-    system_exit(-1);
-	}
-  */
 }
 
 static void system_exit(int status){
@@ -282,8 +250,8 @@ static void system_exit(int status){
   System call format:
   int read (int fd, void *buffer, unsigned size)
 */
-static void
-system_read(struct intr_frame *f, int * arguments){
+static int
+system_read(int * arguments){
   int fd = ((int) arguments[0]); 
   const void *buffer = ((void *) arguments[1]);
   unsigned size = ((unsigned) arguments[2]);
@@ -292,7 +260,6 @@ system_read(struct intr_frame *f, int * arguments){
   
   if (is_valid_memory_access (buffer) == false) {
     printf ("Invalid memory access at %X, exiting...\n",buffer);
-    f->eax = -1;
     system_exit(-1);
   }
 
@@ -308,16 +275,15 @@ system_read(struct intr_frame *f, int * arguments){
     // READ FROM A FILE
       if (t->fd_array[fd].slot_is_empty == false) {
       //off_t file_read (struct file *, void *, off_t);
-      f->eax = file_read (t->fd_array[fd].file, buffer, size);
+      
+      return file_read (t->fd_array[fd].file, buffer, size);
     } else {
       printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
-      f->eax = -1;
       system_exit(-1);
     }
   } else {
     // INVALID FILE DESCRIPTOR
     printf ("Invalid file descriptor of %d, exiting...\n",fd);
-    f->eax = -1;
     system_exit(-1);
   }
 }
@@ -328,12 +294,13 @@ system_read(struct intr_frame *f, int * arguments){
   System call format: 
   int write (int fd, const void *buffer, unsigned size)
 */
-static void
-system_write(struct intr_frame *f, int * arguments){
+static unsigned
+system_write(int * arguments){
   // Assumes that items are pushed onto the stack from right to left
   int fd = ((int) arguments[0]); 
   const void *buffer = ((void *) arguments[1]);
   unsigned size = ((unsigned) arguments[2]);
+  unsigned size_written = 0;
 
 
 if (is_valid_memory_access (buffer) == false) {
@@ -347,12 +314,15 @@ if (is_valid_memory_access (buffer) == false) {
     // Writing to the console (like a print statement)
     if (size <= WRITE_CHUNK_SIZE) {
       putbuf (buffer, size);
+      return size;
     } else {
       // Break the write into smaller chunks
       while (size > WRITE_CHUNK_SIZE) {
         putbuf (buffer, size);
         size -= WRITE_CHUNK_SIZE;
+        size_written += WRITE_CHUNK_SIZE;
       }
+      return size_written;
     }
   } else {
     // Writing to a file with a file descriptor fd
@@ -366,7 +336,7 @@ if (is_valid_memory_access (buffer) == false) {
 
 }
 
-static bool system_create(struct intr_frame *f, int * arguments){
+static bool system_create(int * arguments){
   bool result = false;
   if(is_valid_memory_access((void*) arguments[0])){
     const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);

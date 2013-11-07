@@ -109,7 +109,7 @@ parse_process_args(const char *cmdline, void **esp)
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, &argv[i], size);
-    printf("Address: %X, Data: %s, Name: argv[i][...]\n", *esp, *(char**)*esp);
+    //printf("Address: %X, Data: %s, Name: argv[i][...]\n", *esp, *(char**)*esp);
     argv_addresses[i] = (void*)(*esp);
   }
 
@@ -119,28 +119,28 @@ parse_process_args(const char *cmdline, void **esp)
   // Push &argv[argc]
   // push_4bytes_onto_user_stack(esp, &argv[argc]);
   push_4bytes_onto_user_stack(esp, &argv[argc]);
-  printf("Address: %X, Data: %X, Name: argv[argc]\n", *esp, *(char**)*esp);
+  //printf("Address: %X, Data: %X, Name: argv[argc]\n", *esp, *(char**)*esp);
 
   // Push &argv[i]
   for(i = argc-1; i >= 0; i--) {
     push_4bytes_onto_user_stack(esp, &argv_addresses[i]);
-    printf("Address: %X, Data: %X, Name: argv[i]\n", *esp, *(char**)*esp);
+    //printf("Address: %X, Data: %X, Name: argv[i]\n", *esp, *(char**)*esp);
   }
 
   // Push argv
   char *argv_pointer = (char*)(*esp);
   push_4bytes_onto_user_stack(esp, &argv_pointer);
-  printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
+  //printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
   // printf("TEST: %s\n", *(char**)***esp);
 
   // Push argc
   push_4bytes_onto_user_stack(esp, &argc);
-  printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
+  //printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
   
   // Push return address
   // push_4bytes_onto_user_stack(esp, &argv[argc]); // argv[argc] is already a null pointer so I pushed that as a NULL pointer instead of creating a new one
   push_4bytes_onto_user_stack(esp, &null_ptr);
-  printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
+  //printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
 
   // free(argv);
 }
@@ -234,22 +234,22 @@ process_wait (tid_t child_tid UNUSED)
   */
 
   struct thread * tc = thread_current();
-  printf("child pid = %d \n", child_tid);
-  printf("parent pid = %d \n", (int) tc->tid);
-  printf("parent name = %s \n", tc->name);
+  //printf("child pid = %d \n", child_tid);
+  //printf("parent pid = %d \n", (int) tc->tid);
+  //printf("parent name = %s \n", tc->name);
   struct child_process * cp = get_child_of_thread(tc, child_tid);
   if (cp == NULL){
-    printf ("child pid is not valid - returning -1\n");
+    //printf ("child pid is not valid - returning -1\n");
     return -1;
   }
   if (cp->wait_called){
-    printf ("wait has already been called on child - returning -1\n");
+    //printf ("wait has already been called on child - returning -1\n");
     return -1;
   }
   while (!cp->has_exited){
     barrier();
   }
-  printf("Process has exited. returning status of %d\n", cp->exit_status);
+  //printf("Process has exited. returning status of %d\n", cp->exit_status);
   return cp->exit_status;
 }
 
