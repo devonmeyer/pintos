@@ -565,16 +565,26 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->donated_priorities);
   list_init (&t->children);
   t->parent = NULL;
+  struct fd_info * fd_array[18];
 
 
 #ifdef USERPROG
+  /*
   int i;
-  struct fd_info fdi;
-  fdi.file = NULL;
-  fdi.slot_is_empty = true;
+  struct fd_info * fdi = malloc(sizeof(struct fd_info));
+  fdi->file = NULL;
+  fdi->slot_is_empty = true;
+  fdi->size = 0;
+  fdi->start_addr = NULL;
   for (i = 2; i < 18; i++) {
     t->fd_array[i] = fdi;
   }
+  */
+  int i;
+  for(i = 0; i < 18; i++){
+    t->fd_array[i] = NULL;
+  }
+
 #endif
 
   old_level = intr_disable ();

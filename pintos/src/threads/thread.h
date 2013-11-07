@@ -27,10 +27,10 @@ typedef int tid_t;
 
 
 // /* The information associated with each file descriptor. */
-    struct fd_info {
+  struct fd_info {
       int size;
       void *start_addr;
-      bool slot_is_empty;
+      //bool slot_is_empty;
       struct file *file;
       // size, name, begin addr, offset, etc. look at wherever the FD is stored later
     };
@@ -111,7 +111,7 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     
-    struct fd_info fd_array[18];       /* The array of file descriptors, indexed by the file descriptor number.
+    struct fd_info * fd_array[18];       /* The array of file descriptors, indexed by the file descriptor number.
                                           There are only 16 files in Pintos, but 0 and 1 are reserved fd values. */
     struct thread * parent;
 

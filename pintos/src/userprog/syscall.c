@@ -46,6 +46,7 @@ syscall_handler (struct intr_frame *f)
 {
   int * num = f->esp;
   int arguments[3];
+  printf("Got system call number %d\n", *num);
   switch(*num){
   	case SYS_HALT:
       shutdown_power_off();
@@ -101,6 +102,7 @@ syscall_handler (struct intr_frame *f)
     	thread_exit();  
       break;
   }
+  printf("System call finished.\n");
 }
 
 static void
@@ -108,7 +110,7 @@ system_close_all(){
   int i = 0;
   struct thread * holder = thread_current();
   for(i = 0; i < 18; i++){
-    if(!holder->fd_array[i].slot_is_empty){
+    if(!holder->fd_array[i] == NULL){
       system_close(&i);
     }
   }
@@ -119,10 +121,10 @@ static void
 system_close(int * arguments) 
 {
   int fd = ((int) arguments[0]); 
+  // Need to have fd check
   struct thread *t = thread_current ();
-  
-  if (t->fd_array[fd].slot_is_empty == false) {
-    file_close (t->fd_array[fd].file);
+  if (t->fd_array[fd] != NULL) {
+    file_close (t->fd_array[fd]->file);
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
     system_exit(-1);
@@ -148,8 +150,8 @@ system_tell(int * arguments)
   int fd = ((int) arguments[0]); 
   struct thread *t = thread_current ();
   
-  if (t->fd_array[fd].slot_is_empty == false) {
-    unsigned tell = ((unsigned)file_tell (t->fd_array[fd].file));
+  if (t->fd_array[fd] != NULL) {
+    unsigned tell = ((unsigned)file_tell (t->fd_array[fd]->file));
     return tell;
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
@@ -169,8 +171,8 @@ system_filesize(int * arguments)
   int fd = ((int) arguments[0]); 
   struct thread *t = thread_current ();
   
-  if (t->fd_array[fd].slot_is_empty == false) {
-    int fl = ((int)file_length (t->fd_array[fd].file));
+  if (t->fd_array[fd] == NULL) {
+    int fl = ((int)file_length (t->fd_array[fd]->file));
     return fl;
   } else {
     printf ("File with fd=%d was not open, exiting...\n",fd);
@@ -192,13 +194,12 @@ system_open(int * arguments){
     struct thread *t = thread_current ();
   
     if (open_file != NULL) {
-      struct fd_info fd_information;
-      fd_information.file = open_file;
-      fd_information.slot_is_empty = false;
+      struct fd_info * fd_information = malloc(sizeof(struct fd_info));
+      fd_information->file = open_file;
       int fd;
       int i;
       for (i = 2; i < 18; i++) {
-        if (t->fd_array[i].slot_is_empty == true) {
+        if (t->fd_array[i] == NULL) {
           fd = i;
           //printf ("chose fd=%d\n",fd);
           break;
@@ -254,10 +255,10 @@ system_read(int * arguments){
 
   } else if (fd > 1 && fd < 18) {
     // READ FROM A FILE
-      if (t->fd_array[fd].slot_is_empty == false) {
+      if (t->fd_array[fd] != NULL) {
       //off_t file_read (struct file *, void *, off_t);
       
-      return file_read (t->fd_array[fd].file, buffer, size);
+      return file_read (t->fd_array[fd]->file, buffer, size);
     } else {
       printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
       system_exit(-1);
