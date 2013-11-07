@@ -12,12 +12,14 @@
 #include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "filesys/directory.h"
 #include "devices/shutdown.h"
 #include "process.h"
 
 static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
 static void validate_file_descriptor(const int fd);
+static bool file_already_exists (const char * file_name);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 
 static int system_open(int * arguments);
@@ -48,7 +50,7 @@ syscall_handler (struct intr_frame *f)
   if(is_valid_memory_access((const void *) f->esp)){
     int * num = f->esp;
     int arguments[3];
-    printf("Got system call number %d\n", *num);
+    //printf("Got system call number %d\n", *num);
     switch(*num){
     	case SYS_HALT:
         shutdown_power_off();
@@ -104,7 +106,7 @@ syscall_handler (struct intr_frame *f)
       	thread_exit();  
         break;
     }
-    printf("System call finished.\n");
+    //printf("System call finished.\n");
   } else {
     system_exit(-1);
   }
@@ -165,9 +167,15 @@ system_close(int * arguments)
  static pid_t 
  system_exec (int * arguments)
  {
-   // pid is mapped exactly to tid, process_execute returns tid
-  if(!is_valid_memory_access(arguments[0])){
+  char * file_name = ((char*)arguments[0]);
+  printf("SYS_EXEC, FILE_NAME = %s\n", file_name);
+  // pid is mapped exactly to tid, process_execute returns tid
+  if(!is_valid_memory_access(file_name)){
     system_exit(-1);
+  }
+  if(file_already_exists(file_name)) {
+    printf("File named %s already exists, exiting...\n", file_name);
+    return -1;
   }
   const void * args = pagedir_get_page(thread_current()->pagedir, arguments[0]);
   pid_t pid = ((pid_t) process_execute((char *) args));
@@ -230,6 +238,11 @@ system_filesize(int * arguments)
 static int
 system_open(int * arguments){
     char *file_name = ((char *) arguments[0]);
+
+    if (strlen(file_name) == 0) {
+      printf("Empty file name string for system_open(), exiting...\n");
+      return -1;
+    }
     
     if (is_valid_memory_access(file_name) == false) {
       printf ("Invalid memory access at %X, exiting...\n",file_name);
@@ -400,16 +413,20 @@ static bool system_create(int * arguments){
 }
 
 
-// /* 
-//   Validates the file name.
-// */
-// static void
-// validate_file_name (const char * file_name) {
-//   if (*file_name == "") {
-//     printf("Invalid file name: %s, exiting...\n", *file_name);
-//     system_exit(-1);
-//   }
-// }
+/* 
+  Checks to see if a file named FILE_NAME already exists in the file system.
+*/
+static bool
+file_already_exists (const char * file_name) {
+  struct dir *dir = dir_open_root ();
+  struct inode *inode = NULL;
+
+  if (dir != NULL) {
+    return dir_lookup (dir, file_name, &inode);
+  } else {
+    return false;
+  }
+}
 
 /* 
   Validates the file descriptor.  Calls system_exit if invalid file descriptor.
