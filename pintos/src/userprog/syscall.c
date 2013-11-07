@@ -325,18 +325,29 @@ system_write(int * arguments){
 
 static bool system_create(int * arguments){
   bool result = false;
-  if(is_valid_memory_access((void*) arguments[0])){
-    const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
-    const unsigned s = (unsigned) arguments[1];
+  const char *file_name = ((char*) arguments[0]);
+  const unsigned initial_size = ((unsigned) arguments[1]);
+  
+  if(is_valid_memory_access(file_name) && strlen(file_name) != 0) {
+    //const char * created_file = (char *) pagedir_get_page(thread_current()->pagedir, (void *) arguments[0]);
     lock_acquire(&file_sys_lock);
-    result = filesys_create(created_file, s);
+    result = filesys_create(file_name, initial_size);
     lock_release(&file_sys_lock);
-    return result;
-  } else {
-    system_exit(-1);
   }
+    return result;
 }
 
+
+// /* 
+//   Validates the file name.
+// */
+// static void
+// validate_file_name (const char * file_name) {
+//   if (*file_name == "") {
+//     printf("Invalid file name: %s, exiting...\n", *file_name);
+//     system_exit(-1);
+//   }
+// }
 
 /* 
   Validates the file descriptor.  Calls system_exit if invalid file descriptor.
