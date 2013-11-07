@@ -23,7 +23,6 @@ static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static int system_open(int * arguments);
 static int system_read(int * arguments);
 static unsigned system_write(int * arguments);
-static void system_exit(int s);
 static int system_filesize(int * arguments);
 static bool system_create(int * arguments);
 static unsigned system_tell(int * arguments);
@@ -45,65 +44,67 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  int * num = f->esp;
-  int arguments[3];
-  printf("Got system call number %d\n", *num);
-  switch(*num){
-  	case SYS_HALT:
-      shutdown_power_off();
-  		thread_exit();
-  		break;
-    case SYS_EXIT:
-    	get_arguments(f, 1, arguments);
-      f->eax = (int) arguments[0];
-      system_exit(arguments[0]);
-    	break;
-    case SYS_EXEC:
-      get_arguments(f, 1, arguments);
-      f->eax = system_exec(arguments);
-    	break;
-    case SYS_WAIT:
-      get_arguments(f, 1, arguments);
-      f->eax = process_wait((tid_t) arguments[0]);
-    	break;
-    case SYS_CREATE:
-      get_arguments(f, 2, arguments);
-      f->eax = system_create(arguments);
-    	break;
-    case SYS_REMOVE:
-      get_arguments(f, 1, arguments);
-    	break;
-    case SYS_OPEN:
-      get_arguments(f, 1, arguments);
-    	f->eax = system_open(arguments);
-    	break;
-    case SYS_FILESIZE:
-      get_arguments(f, 1, arguments);
-      f->eax = system_filesize(arguments);
-    	break;
-    case SYS_READ:
-      get_arguments(f, 3, arguments);
-      f->eax = system_read(arguments);
-    	break;
-    case SYS_WRITE:
-      get_arguments(f, 3, arguments);
-      f->eax = system_write(arguments);
-    	break;
-    case SYS_SEEK:
-    	break;
-    case SYS_TELL:
-      get_arguments(f, 1, arguments);
-      f->eax = system_tell(arguments);
-    	break;
-    case SYS_CLOSE:
-      get_arguments(f, 1, arguments);
-      system_close(arguments);
-    	break;
-    default:
-    	thread_exit();  
-      break;
+  if(is_valid_memory_access((const void *) f->esp)){
+    int * num = f->esp;
+    int arguments[3];
+    printf("Got system call number %d\n", *num);
+    switch(*num){
+    	case SYS_HALT:
+        shutdown_power_off();
+    		thread_exit();
+    		break;
+      case SYS_EXIT:
+      	get_arguments(f, 1, arguments);
+        f->eax = (int) arguments[0];
+        system_exit(arguments[0]);
+      	break;
+      case SYS_EXEC:
+        get_arguments(f, 1, arguments);
+        f->eax = system_exec(arguments);
+      	break;
+      case SYS_WAIT:
+        get_arguments(f, 1, arguments);
+        f->eax = process_wait((tid_t) arguments[0]);
+      	break;
+      case SYS_CREATE:
+        get_arguments(f, 2, arguments);
+        f->eax = system_create(arguments);
+      	break;
+      case SYS_REMOVE:
+        get_arguments(f, 1, arguments);
+      	break;
+      case SYS_OPEN:
+        get_arguments(f, 1, arguments);
+      	f->eax = system_open(arguments);
+      	break;
+      case SYS_FILESIZE:
+        get_arguments(f, 1, arguments);
+        f->eax = system_filesize(arguments);
+      	break;
+      case SYS_READ:
+        get_arguments(f, 3, arguments);
+        f->eax = system_read(arguments);
+      	break;
+      case SYS_WRITE:
+        get_arguments(f, 3, arguments);
+        f->eax = system_write(arguments);
+      	break;
+      case SYS_SEEK:
+      	break;
+      case SYS_TELL:
+        get_arguments(f, 1, arguments);
+        f->eax = system_tell(arguments);
+      	break;
+      case SYS_CLOSE:
+        get_arguments(f, 1, arguments);
+        system_close(arguments);
+      	break;
+      default:
+      	thread_exit();  
+        break;
+    }
+    printf("System call finished.\n");
   }
-  printf("System call finished.\n");
 }
 
 static void
@@ -218,7 +219,8 @@ system_open(int * arguments){
     }
 }
 
-static void system_exit(int status){
+void
+system_exit(int status){
   struct thread * current_thread = thread_current();
   printf("%s: exit(%d)\n", current_thread->name, status);
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
