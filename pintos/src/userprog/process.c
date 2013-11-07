@@ -87,6 +87,7 @@ parse_process_args(const char *cmdline, void **esp)
 {
   int argc = 0;
   char *argv[MAX_ARGS];
+  void *argv_addresses[argc];
 
   int i;
   for(i = 0; i < MAX_ARGS; i++) { // Initialize argv
@@ -107,7 +108,6 @@ parse_process_args(const char *cmdline, void **esp)
   align_user_stack(esp);
 
   // Push argv[i]
-  void *argv_addresses[argc];
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, &argv[i], size);
@@ -164,12 +164,8 @@ static void
 align_user_stack(void **esp)
 {
   int alignment = (uint16_t)*esp % 4;
-  int zero = 0;
-
   if(alignment > 0) {
     *esp -= alignment;
-    memcpy(*esp, &zero, 1);
-    // printf("I aligned!\n");
   }
 }
 
