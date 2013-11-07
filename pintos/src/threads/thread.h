@@ -198,7 +198,10 @@ struct prio {
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
-void set_parent_of_thread(int pid);
+void set_child_of_thread(int pid);
+struct child_process * get_child_of_thread(struct thread * parent, int pid);
+void set_exit_status_of_child(struct thread * parent, int pid, int status);
+
 
 void thread_init (void);
 void thread_start (void);
