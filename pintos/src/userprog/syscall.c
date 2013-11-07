@@ -223,7 +223,6 @@ static void system_exit(int status){
   printf("%s: exit(%d)\n", current_thread->name, status);
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
   thread_exit();
-
 }
 
 
@@ -257,9 +256,7 @@ system_read(int * arguments){
 
   } else if (fd > 1 && fd < 18) {
     // READ FROM A FILE
-      if (t->fd_array[fd] != NULL) {
-      //off_t file_read (struct file *, void *, off_t);
-      
+      if (t->fd_array[fd] != NULL) {      
       return file_read (t->fd_array[fd]->file, buffer, size);
     } else {
       printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
@@ -289,15 +286,19 @@ system_write(int * arguments){
   unsigned size_written = 0;
 
 
-if (is_valid_memory_access (buffer) == false) {
+  if (is_valid_memory_access (buffer) == false) {
     system_exit(-1);
-}
+  }
+
+  if (fd == 0) {
+    printf("File descriptor of 0 is invalid for system_write().\n");
+    system_exit(-1);
+  }
+
   buffer = pagedir_get_page(thread_current()->pagedir, buffer);
 
-  // putbuf (const char *buffer, size_t n), defined in console.c
-  ASSERT (fd != 0); // FD of 0 is reserved for STDIN_FILENO, the standard input
   if (fd == 1) {
-    // Writing to the console (like a print statement)
+    // WRITE TO THE CONSOLE
     if (size <= WRITE_CHUNK_SIZE) {
       putbuf (buffer, size);
       return size;
@@ -311,15 +312,13 @@ if (is_valid_memory_access (buffer) == false) {
       return size_written;
     }
   } else {
-    // Writing to a file with a file descriptor fd
-
+    // WRITE TO A FILE
     lock_acquire (&file_sys_lock);
-    //file_write ();
-    lock_release (&file_sys_lock);    
-    //ASSERT (thread_current ()->fd_array[fd]); // Must be an open file
-    
-  }
+    size_written = file_write (thread_current ()->fd_array[fd]->file, buffer, size);
+    lock_release (&file_sys_lock);
 
+    return size_written;
+  }
 }
 
 static bool system_create(int * arguments){
@@ -364,12 +363,6 @@ validate_file_descriptor(const int fd) {
 static bool
 is_valid_memory_access(const void *vaddr) {
 
-  // Use ASSERT statements for debugging, then remove before publishing code:
-	//ASSERT (vaddr != NULL);
-	//ASSERT (!is_kernel_vaddr(vaddr));
-	//ASSERT (pagedir_get_page(thread_current ()->pagedir,vaddr) != NULL);
-
-
 	if (vaddr == NULL) {
 		// Null Pointer
     printf ("--- addr is null pointer ---\n");
@@ -383,9 +376,6 @@ is_valid_memory_access(const void *vaddr) {
     printf ("--- Unmapped ---\n");
 		return false;
 	}
-
-  //printf ("--- valid_memory_access ---\n");
-
 
 	return true;
 }
