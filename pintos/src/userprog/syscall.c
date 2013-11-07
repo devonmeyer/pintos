@@ -27,6 +27,7 @@ static int system_filesize(int * arguments);
 static bool system_create(int * arguments);
 static unsigned system_tell(int * arguments);
 static void system_close(int * arguments);
+static void system_seek(struct intr_frame *f, int * arguments);
 
 static int system_exec (int * arguments);
 
@@ -109,6 +110,26 @@ syscall_handler (struct intr_frame *f)
   }
 }
 
+static void 
+system_seek(struct intr_frame *f, int * arguments)
+{
+  int fd = ((int) arguments[0]);
+  int position = ((off_t) arguments[1]);
+  struct thread *t = thread_current ();
+
+  validate_file_descriptor(fd);
+
+  if(t->fd_array[fd] != NULL) {
+    struct file * open_file = t->fd_array[fd]->file;
+    file_seek(open_file, position);
+  } else {
+    printf ("File with fd=%d was not open, exiting...\n",fd);
+    system_exit(-1);
+  }
+}
+
+
+
 static void
 system_close_all(){
   int i = 0;
@@ -121,13 +142,24 @@ system_close_all(){
 }
 
 
+
+/*
+  System call format:
+  void close (int fd)
+*/
 static void
 system_close(int * arguments) 
 {
-  int fd = ((int) arguments[0]); 
+  int fd = ((int) arguments[0]);
+  if (fd == 0 || fd == 1) {
+    printf ("Cannot system_close(%d), exiting...\n",fd);
+    system_exit(-1);
+  } 
+
   validate_file_descriptor(fd);
   struct thread *t = thread_current ();
   file_close (t->fd_array[fd]->file);
+  t->fd_array[fd] = NULL;
 }
 
  static pid_t 
@@ -143,6 +175,12 @@ system_close(int * arguments)
   return pid;
  }
 
+
+
+/*
+  System call format:
+  unsigned tell (int fd)
+*/
 static unsigned 
 system_tell(int * arguments)
 {
@@ -160,12 +198,12 @@ system_tell(int * arguments)
   }
 }
 
+
+
 /* 
-	The method called when the SYS_OPEN is called. 
   System call format:
   int open (const char *file)
 */
-
 static int 
 system_filesize(int * arguments)
 {
@@ -183,9 +221,14 @@ system_filesize(int * arguments)
   }
 }
 
+
+
+/*
+  System call format:
+  int open (const char *file)
+*/
 static int
 system_open(int * arguments){
-
     char *file_name = ((char *) arguments[0]);
     
     if (is_valid_memory_access(file_name) == false) {
@@ -231,7 +274,6 @@ system_exit(int status){
 
 
 /* 
-  The method called when SYS_READ is called.
   System call format:
   int read (int fd, void *buffer, unsigned size)
 */
@@ -253,10 +295,14 @@ system_read(int * arguments){
   buffer = pagedir_get_page(thread_current()->pagedir, buffer);
 
   if (fd == 0) {
-    // READ FROM CONSOLE
-    // uint8_t input_getc (void) 
-    buffer = input_getc ();
-    /* TODO: Implement reading from the console. */
+    // READ FROM THE CONSOLE 
+    while (size > 0) {
+      // Read one byte at a time from the console, for a total of SIZE bytes
+      char c = ((char)input_getc());
+      void *input = &c;
+      memcpy (buffer, input, 1); 
+      size--;
+    }
 
   } else if (fd > 1 && fd < 18) {
     // READ FROM A FILE
@@ -275,7 +321,6 @@ system_read(int * arguments){
 
 
 /* 
-  The method called when the SYS_WRITE is called. 
   System call format: 
   int write (int fd, const void *buffer, unsigned size)
 */
@@ -325,6 +370,11 @@ system_write(int * arguments){
   }
 }
 
+
+/*
+  System call format:
+  bool create (const char *file, unsigned initial_size)
+*/
 static bool system_create(int * arguments){
   bool result = false;
   const char *file_name = ((char*) arguments[0]);
