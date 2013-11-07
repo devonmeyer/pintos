@@ -87,17 +87,19 @@ parse_process_args(const char *cmdline, void **esp)
 {
   int argc = 0;
   char *argv[MAX_ARGS];
-  // char **argv = malloc(sizeof(PGSIZE));
+
   int i;
-  for(i = 0; i < MAX_ARGS; i++) {
+  for(i = 0; i < MAX_ARGS; i++) { // Initialize argv
     argv[i] = 0;
   }
 
   char *delimiters = " ";
   char *token, *save_ptr;
 
+  // Parse each argument into argv
   for(token = strtok_r(cmdline, delimiters, &save_ptr); token != NULL; token = strtok_r(NULL, delimiters, &save_ptr)) {
     argv[argc] = token;
+    printf("argc: %i, argv: %s\n", argc, argv[argc]);
     argc++;
   }
 
@@ -109,40 +111,37 @@ parse_process_args(const char *cmdline, void **esp)
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, &argv[i], size);
-    //printf("Address: %X, Data: %s, Name: argv[i][...]\n", *esp, *(char**)*esp);
-    argv_addresses[i] = (void*)(*esp);
+    printf("Address: %X, Data: %s, Name: argv[%i][...]\n", *esp, *(char**)*esp, i);
+    argv_addresses[i] = *esp; // Store address to push onto stack later
   }
 
-  // TO DO word align
+  // Word align
   align_user_stack(esp);
-  int null_ptr = 0;
-  // Push &argv[argc]
-  // push_4bytes_onto_user_stack(esp, &argv[argc]);
+  
+  // Push address of argv[argc]
   push_4bytes_onto_user_stack(esp, &argv[argc]);
-  //printf("Address: %X, Data: %X, Name: argv[argc]\n", *esp, *(char**)*esp);
+  printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, argc);
 
-  // Push &argv[i]
+  // Push address of argv[i]
   for(i = argc-1; i >= 0; i--) {
     push_4bytes_onto_user_stack(esp, &argv_addresses[i]);
-    //printf("Address: %X, Data: %X, Name: argv[i]\n", *esp, *(char**)*esp);
+    printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, i);
   }
 
   // Push argv
   char *argv_pointer = (char*)(*esp);
   push_4bytes_onto_user_stack(esp, &argv_pointer);
-  //printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
-  // printf("TEST: %s\n", *(char**)***esp);
+  printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
 
   // Push argc
   push_4bytes_onto_user_stack(esp, &argc);
-  //printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
+  printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
   
   // Push return address
-  // push_4bytes_onto_user_stack(esp, &argv[argc]); // argv[argc] is already a null pointer so I pushed that as a NULL pointer instead of creating a new one
+  int null_ptr = 0;
   push_4bytes_onto_user_stack(esp, &null_ptr);
-  //printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
+  printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
 
-  // free(argv);
 }
 
 /* Decrements the user stack and copies data to the current address */
@@ -165,9 +164,11 @@ static void
 align_user_stack(void **esp)
 {
   int alignment = (uint16_t)*esp % 4;
+  int zero = 0;
 
   if(alignment > 0) {
     *esp -= alignment;
+    memcpy(*esp, &zero, 1);
     // printf("I aligned!\n");
   }
 }
