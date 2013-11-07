@@ -27,6 +27,7 @@ static void system_filesize(struct intr_frame *f, int * arguments);
 static bool system_create(struct intr_frame *f, int * arguments);
 static void system_tell(struct intr_frame *f, int * arguments);
 static void system_close(int * arguments);
+static void system_seek(struct intr_frame *f, int * arguments);
 
 static int system_exec (int * arguments);
 
@@ -89,6 +90,8 @@ syscall_handler (struct intr_frame *f)
       system_write(f, arguments);
     	break;
     case SYS_SEEK:
+      get_arguments(f, 2, arguments);
+      system_seek(f, arguments);
     	break;
     case SYS_TELL:
       get_arguments(f, 1, arguments);
@@ -101,6 +104,22 @@ syscall_handler (struct intr_frame *f)
     default:
     	thread_exit();  
       break;
+  }
+}
+
+static void 
+system_seek(struct intr_frame *f, int * arguments)
+{
+  int fd = ((int) arguments[0]);
+  int position = ((off_t) arguments[1]);
+  struct thread *t = thread_current ();
+
+  if(t->fd_array[fd].slot_is_empty == false) {
+    struct file * open_file = t->fd_array[fd].file;
+    file_seek(open_file, position);
+  } else {
+    printf ("File with fd=%d was not open, exiting...\n",fd);
+    system_exit(-1);
   }
 }
 
