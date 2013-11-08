@@ -179,11 +179,17 @@ system_close(int * arguments)
  static pid_t 
  system_exec (int * arguments)
  {
-  char * file_name = ((char*)arguments[0]);
+  const base_args = ((char*)arguments[0]);
   // pid is mapped exactly to tid, process_execute returns tid
-  if(!is_valid_memory_access(file_name)){
+  if(!is_valid_memory_access(base_args)){
     system_exit(-1);
   }
+  
+  char buffer[100];
+  strlcpy(buffer, base_args, (strlen(base_args)+1));
+  char *save_ptr; // Address used to keep track of tokenizer's position
+  char *file_name = strtok_r(buffer, " ", &save_ptr);
+
   if(!file_already_exists(file_name)) {
         if (debug_mode) {
     printf("No file named %s exists, exiting...\n", file_name);
@@ -310,6 +316,7 @@ system_exit(int status){
   printf("%s: exit(%d)\n", current_thread->name, status);
 //<<<<<<< HEAD
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
+  // NOT SURE IF THE BOTTOM CODE IS CORRECT OR NOT, BUT IT WAS CAUSING INFINITE LOOP
 /*=======
   if (thread_exists(current_thread->parent)){
     set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
