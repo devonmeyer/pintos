@@ -48,7 +48,7 @@ syscall_handler (struct intr_frame *f)
   if(is_valid_memory_access((const void *) f->esp)){
     int * num = f->esp;
     int arguments[3];
-    printf("Got system call number %d\n", *num);
+    //printf("Got system call number %d\n", *num);
     switch(*num){
     	case SYS_HALT:
         shutdown_power_off();
@@ -104,7 +104,7 @@ syscall_handler (struct intr_frame *f)
       	thread_exit();  
         break;
     }
-    printf("System call finished.\n");
+    //printf("System call finished.\n");
   } else {
     system_exit(-1);
   }
@@ -171,6 +171,9 @@ system_close(int * arguments)
   }
   const void * args = pagedir_get_page(thread_current()->pagedir, arguments[0]);
   pid_t pid = ((pid_t) process_execute((char *) args));
+  if(pid == TID_ERROR){
+    return -1;
+  }
   set_child_of_thread((int) pid);
   return pid;
  }
@@ -269,7 +272,9 @@ void
 system_exit(int status){
   struct thread * current_thread = thread_current();
   printf("%s: exit(%d)\n", current_thread->name, status);
-  set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
+  if (thread_exists(current_thread->parent)){
+    set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
+  }
   thread_exit();
 }
 

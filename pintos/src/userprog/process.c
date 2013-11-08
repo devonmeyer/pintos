@@ -38,7 +38,7 @@ process_execute (const char *cmdline)
 {
   char *fn_copy;
   tid_t tid;
-  printf("%s\n", cmdline);
+  //printf("%s\n", cmdline);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -99,7 +99,7 @@ parse_process_args(const char *cmdline, void **esp)
   // Parse each argument into argv
   for(token = strtok_r(cmdline, delimiters, &save_ptr); token != NULL; token = strtok_r(NULL, delimiters, &save_ptr)) {
     argv[argc] = token;
-    printf("argc: %i, argv: %s\n", argc, argv[argc]);
+    //printf("argc: %i, argv: %s\n", argc, argv[argc]);
     argc++;
   }
 
@@ -111,7 +111,7 @@ parse_process_args(const char *cmdline, void **esp)
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, &argv[i], size);
-    printf("Address: %X, Data: %s, Name: argv[%i][...]\n", *esp, *(char**)*esp, i);
+    //printf("Address: %X, Data: %s, Name: argv[%i][...]\n", *esp, *(char**)*esp, i);
     argv_addresses[i] = *esp; // Store address to push onto stack later
   }
 
@@ -120,27 +120,27 @@ parse_process_args(const char *cmdline, void **esp)
   
   // Push address of argv[argc]
   push_4bytes_onto_user_stack(esp, &argv[argc]);
-  printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, argc);
+  //printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, argc);
 
   // Push address of argv[i]
   for(i = argc-1; i >= 0; i--) {
     push_4bytes_onto_user_stack(esp, &argv_addresses[i]);
-    printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, i);
+   // printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, i);
   }
 
   // Push argv
   char *argv_pointer = (char*)(*esp);
   push_4bytes_onto_user_stack(esp, &argv_pointer);
-  printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
+  //printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
 
   // Push argc
   push_4bytes_onto_user_stack(esp, &argc);
-  printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
+  //printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
   
   // Push return address
   int null_ptr = 0;
   push_4bytes_onto_user_stack(esp, &null_ptr);
-  printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
+  //printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
 
 }
 

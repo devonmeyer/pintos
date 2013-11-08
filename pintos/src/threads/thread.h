@@ -203,6 +203,7 @@ void set_child_of_thread(int pid);
 struct child_process * get_child_of_thread(struct thread * parent, int pid);
 void set_exit_status_of_child(struct thread * parent, int pid, int status);
 
+bool thread_exists(struct thread * t);
 
 void thread_init (void);
 void thread_start (void);
