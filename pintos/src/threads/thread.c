@@ -893,4 +893,21 @@ set_exit_status_of_child(struct thread * parent, int pid, int status){
     }
 }
 
+bool
+thread_exists(struct thread * t){
+  struct list_elem *e;
+
+  if(!is_thread(t)){
+    return false;
+  }
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t_exists = list_entry (e, struct thread, allelem);
+      if(t_exists->tid == t->tid){
+        return true;
+      }      
+    }
+  return false;
+}
 
