@@ -18,6 +18,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/synch.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 
 #define MAX_ARGS 25
 
@@ -28,6 +30,8 @@ static void parse_process_args(const char *cmdline, void **esp);
 static void push_onto_user_stack(void **esp, void *data, int size);
 static void push_4bytes_onto_user_stack(void **esp, void *data);
 static void align_user_stack(void **esp);
+
+static bool is_valid_memory_access(const void *vaddr);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -87,7 +91,6 @@ parse_process_args(const char *cmdline, void **esp)
 {
   int argc = 0;
   char *argv[MAX_ARGS];
-  void *argv_addresses[argc];
 
   int i;
   for(i = 0; i < MAX_ARGS; i++) { // Initialize argv
@@ -104,6 +107,8 @@ parse_process_args(const char *cmdline, void **esp)
     argc++;
   }
 
+  void *argv_addresses[argc];
+
   // Round stack pointer to nearest multiple of 4
   align_user_stack(esp);
 
@@ -111,7 +116,7 @@ parse_process_args(const char *cmdline, void **esp)
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, &argv[i], size);
-    printf("Address: %X, Data: %s, Name: argv[%i][...]\n", *esp, *(char**)*esp, i);
+    printf("Address: %-15X Data: %-15s Name: argv[%i][...]\n", *esp, *(char**)*esp, i);
     argv_addresses[i] = *esp; // Store address to push onto stack later
   }
 
@@ -120,27 +125,28 @@ parse_process_args(const char *cmdline, void **esp)
   
   // Push address of argv[argc]
   push_4bytes_onto_user_stack(esp, &argv[argc]);
-  printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, argc);
+  printf("Address: %-15X Data: %-15X Name: argv[%i]\n", *esp, *(char**)*esp, argc);
 
   // Push address of argv[i]
   for(i = argc-1; i >= 0; i--) {
+    is_valid_memory_access(argv_addresses[i]);
     push_4bytes_onto_user_stack(esp, &argv_addresses[i]);
-    printf("Address: %X, Data: %X, Name: argv[%i]\n", *esp, *(char**)*esp, i);
+    printf("Address: %-15X Data: %-15X Name: argv[%i]\n", *esp, *(char**)*esp, i);
   }
 
   // Push argv
   char *argv_pointer = (char*)(*esp);
   push_4bytes_onto_user_stack(esp, &argv_pointer);
-  printf("Address: %X, Data: %X, Name: argv\n", *esp, *(char**)*esp);
+  printf("Address: %-15X Data: %-15X Name: argv\n", *esp, *(char**)*esp);
 
   // Push argc
   push_4bytes_onto_user_stack(esp, &argc);
-  printf("Address: %X, Data: %X, Name: argc\n", *esp, *(int*)*esp);
+  printf("Address: %-15X Data: %-15X Name: argc\n", *esp, *(int*)*esp);
   
   // Push return address
   int null_ptr = 0;
   push_4bytes_onto_user_stack(esp, &null_ptr);
-  printf("Address: %X, Data: %X, Name: return address\n", *esp, *(char**)*esp);
+  printf("Address: %-15X Data: %-15X Name: return address\n", *esp, *(char**)*esp);
 
 }
 
@@ -149,7 +155,12 @@ static void
 push_onto_user_stack(void **esp, void *data, int size)
 {
   *esp -= size;
-  memcpy(*esp, data, size);
+  // if(is_valid_memory_access(data)) {
+    memcpy(*esp, data, size);
+  // } else {
+    // process_exit();
+  // }
+ 
 }
 
 /* Decrements the user stack by 4 bytes and copies data to the current address */
@@ -632,4 +643,27 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+/* 
+  Returns true if the memory address is valid and can be accessed by the user process.
+*/
+static bool
+is_valid_memory_access(const void *vaddr) {
+
+  if (vaddr == NULL) {
+    // Null Pointer
+    printf ("--- addr is null pointer ---\n");
+    return false;
+  } else if (is_kernel_vaddr(vaddr)) { 
+    // Pointer to Kernel Virtual Address Space
+    printf ("--- is kernel virtual address ---\n");
+    return false;
+  } else if (pagedir_get_page(thread_current ()->pagedir, vaddr) == NULL) { 
+    // Pointer to Unmapped Virtual Memory
+    printf ("--- Unmapped ---\n");
+    return false;
+  }
+
+  return true;
 }
