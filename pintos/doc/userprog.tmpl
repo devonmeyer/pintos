@@ -1,5 +1,5 @@
 		     +--------------------------+
-       	       	     |		CS 140		|
+       	     |			CS 402			|
 		     | PROJECT 2: USER PROGRAMS	|
 		     | 	   DESIGN DOCUMENT     	|
 		     +--------------------------+
@@ -16,23 +16,6 @@ Ryan Cleary <rcleary@usc.edu>
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
-
-	I. 
-
-		As of writing this Design Document, we have all of the major functionality working except for argument passing. I.e. most/all of our tests would pass if argument passing worked.
-
-		To take an example, our output of the test bad-jump is
-			() begin
-			bad-jump: exit(-1)
-
-		instead of
-			(bad-jump) begin
-			bad-jump: exit(-1)
-
-		So the test works as designed, but because we aren't storing argv[0] correctly, the output is wrong.
-
-		We are working to fix it, but if you are reading this it is likely still an issue and may make our tests appear to fail when, in essence, they should pass.
-
 
 
 >> Please cite any offline or online sources you consulted while
@@ -78,7 +61,20 @@ static void parse_process_args(const char *cmdline, void **esp);
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
->> How do you avoid overflowing the stack page?
+
+The "static bool load (const char *cmdline, void (**eip) (void), void **esp)" function sets up
+the user stack by calling setup_stack(...). After this, we initialize the stack.
+
+First we tokenize the command line arguments into an array of strings (char*). To push this data
+the stack, we decrement the stack pointer by the length of the string +1 (for null terminator),
+then use memcpy(destination, src, size) to copy the physical bytes. After each push we store
+the address at which the string is stored.
+
+We align the stack by using mod 4 and decrement the user stack by the mod result. Then we push a
+null pointer sentinel.
+
+Next, we push the addresses of each address of each string argument we previously pushed, using the
+same methodology. Finally we push argv, argc and a fake return address.
 
 ---- RATIONALE ----
 
