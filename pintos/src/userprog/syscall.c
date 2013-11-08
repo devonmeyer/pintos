@@ -50,7 +50,7 @@ syscall_handler (struct intr_frame *f)
   if(is_valid_memory_access((const void *) f->esp)){
     int * num = f->esp;
     int arguments[3];
-    //printf("Got system call number %d\n", *num);
+    printf("Got system call number %d\n", *num);
     switch(*num){
     	case SYS_HALT:
         shutdown_power_off();
@@ -106,7 +106,7 @@ syscall_handler (struct intr_frame *f)
       	thread_exit();  
         break;
     }
-    //printf("System call finished.\n");
+    printf("System call finished.\n");
   } else {
     system_exit(-1);
   }
@@ -168,13 +168,12 @@ system_close(int * arguments)
  system_exec (int * arguments)
  {
   char * file_name = ((char*)arguments[0]);
-  printf("SYS_EXEC, FILE_NAME = %s\n", file_name);
   // pid is mapped exactly to tid, process_execute returns tid
   if(!is_valid_memory_access(file_name)){
     system_exit(-1);
   }
-  if(file_already_exists(file_name)) {
-    printf("File named %s already exists, exiting...\n", file_name);
+  if(!file_already_exists(file_name)) {
+    printf("No file named %s exists, exiting...\n", file_name);
     return -1;
   }
   const void * args = pagedir_get_page(thread_current()->pagedir, arguments[0]);
@@ -273,7 +272,7 @@ system_open(int * arguments){
 
     } else {
       printf ("File named %s could not be opened, exiting...\n",file_name);
-      system_exit(-1);
+      return -1;
     }
 }
 
@@ -420,12 +419,14 @@ static bool
 file_already_exists (const char * file_name) {
   struct dir *dir = dir_open_root ();
   struct inode *inode = NULL;
-
+  bool exists = false;
   if (dir != NULL) {
-    return dir_lookup (dir, file_name, &inode);
+    exists = dir_lookup (dir, file_name, &inode);
+    dir_close (dir);
   } else {
-    return false;
+    exists = false;
   }
+  return exists;
 }
 
 /* 
