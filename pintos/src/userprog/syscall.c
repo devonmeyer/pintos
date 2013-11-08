@@ -52,6 +52,11 @@ syscall_handler (struct intr_frame *f)
 {
   if(is_valid_memory_access((const void *) f->esp)){
     int * num = f->esp;
+    int * system_call_arg = num + 1;
+    if (is_user_vaddr(system_call_arg) == false) {
+      // The argument to the system call is not in user space!!
+      system_exit(-1);
+    }
     int arguments[3];
     if (debug_mode) {
       printf("Got system call number %d\n", *num);
