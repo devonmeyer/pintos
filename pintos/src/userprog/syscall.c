@@ -111,6 +111,7 @@ syscall_handler (struct intr_frame *f)
       	thread_exit();  
         break;
     }
+
     if (debug_mode) {
      printf("System call finished.\n");
     }
@@ -191,6 +192,9 @@ system_close(int * arguments)
   }
   const void * args = pagedir_get_page(thread_current()->pagedir, arguments[0]);
   pid_t pid = ((pid_t) process_execute((char *) args));
+  if(pid == TID_ERROR){
+    return -1;
+  }
   set_child_of_thread((int) pid);
   return pid;
  }
@@ -304,7 +308,14 @@ void
 system_exit(int status){
   struct thread * current_thread = thread_current();
   printf("%s: exit(%d)\n", current_thread->name, status);
+//<<<<<<< HEAD
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
+/*=======
+  if (thread_exists(current_thread->parent)){
+    set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
+  }
+}
+>>>>>>> 294f5e9a46575bf86ff01c771745032cacebd97a*/
   thread_exit();
 }
 

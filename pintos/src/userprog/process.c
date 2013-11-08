@@ -42,6 +42,7 @@ process_execute (const char *cmdline)
 {
   char *fn_copy;
   tid_t tid;
+  //printf("%s\n", cmdline);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -115,7 +116,7 @@ parse_process_args(const char *cmdline, void **esp)
   for(i = argc-1; i >= 0; i--) {
     int size = strlen(argv[i])+1;
     push_onto_user_stack(esp, argv[i], size);
-    // printf("Address: %-15X Data: %-15s Name: argv[%i][...]\n", *esp, *(char**)*esp, i);
+    // printf("Address: %-15X Data: %-15s Name: argv[%i][...]\n", *esp, *(char**)*esp, i);][...]\n", *esp, *(char**)*esp, i);
     argv_addresses[i] = *esp; // Store address to push onto stack later
   }
 
