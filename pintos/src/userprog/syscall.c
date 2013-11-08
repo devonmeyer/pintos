@@ -12,13 +12,16 @@
 #include "userprog/process.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "filesys/directory.h"
 #include "devices/shutdown.h"
 #include "process.h"
 
 static void syscall_handler (struct intr_frame *);
 static bool is_valid_memory_access(const void *vaddr);
 static void validate_file_descriptor(const int fd);
+static bool file_already_exists (const char * file_name);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
+static void debug (char * debug_msg);
 
 static int system_open(int * arguments);
 static int system_read(int * arguments);
@@ -32,6 +35,7 @@ static void system_seek(struct intr_frame *f, int * arguments);
 static int system_exec (int * arguments);
 
 static struct lock file_sys_lock;
+bool debug_mode;
 
 #define WRITE_CHUNK_SIZE 300
 
@@ -40,6 +44,7 @@ syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
   lock_init (&file_sys_lock);
+  debug_mode = false;
 }
 
 static void
@@ -48,7 +53,9 @@ syscall_handler (struct intr_frame *f)
   if(is_valid_memory_access((const void *) f->esp)){
     int * num = f->esp;
     int arguments[3];
-    //printf("Got system call number %d\n", *num);
+    if (debug_mode) {
+      printf("Got system call number %d\n", *num);
+    }
     switch(*num){
     	case SYS_HALT:
         shutdown_power_off();
@@ -104,7 +111,10 @@ syscall_handler (struct intr_frame *f)
       	thread_exit();  
         break;
     }
-    //printf("System call finished.\n");
+
+    if (debug_mode) {
+     printf("System call finished.\n");
+    }
   } else {
     system_exit(-1);
   }
@@ -123,7 +133,9 @@ system_seek(struct intr_frame *f, int * arguments)
     struct file * open_file = t->fd_array[fd]->file;
     file_seek(open_file, position);
   } else {
+        if (debug_mode) {
     printf ("File with fd=%d was not open, exiting...\n",fd);
+  }
     system_exit(-1);
   }
 }
@@ -152,7 +164,9 @@ system_close(int * arguments)
 {
   int fd = ((int) arguments[0]);
   if (fd == 0 || fd == 1) {
+        if (debug_mode) {
     printf ("Cannot system_close(%d), exiting...\n",fd);
+  }
     system_exit(-1);
   } 
 
@@ -165,9 +179,16 @@ system_close(int * arguments)
  static pid_t 
  system_exec (int * arguments)
  {
-   // pid is mapped exactly to tid, process_execute returns tid
-  if(!is_valid_memory_access(arguments[0])){
+  char * file_name = ((char*)arguments[0]);
+  // pid is mapped exactly to tid, process_execute returns tid
+  if(!is_valid_memory_access(file_name)){
     system_exit(-1);
+  }
+  if(!file_already_exists(file_name)) {
+        if (debug_mode) {
+    printf("No file named %s exists, exiting...\n", file_name);
+  }
+    return -1;
   }
   const void * args = pagedir_get_page(thread_current()->pagedir, arguments[0]);
   pid_t pid = ((pid_t) process_execute((char *) args));
@@ -196,7 +217,9 @@ system_tell(int * arguments)
     unsigned tell = ((unsigned)file_tell (t->fd_array[fd]->file));
     return tell;
   } else {
+        if (debug_mode) {
     printf ("File with fd=%d was not open, exiting...\n",fd);
+  }
     system_exit(-1);
   }
 }
@@ -219,7 +242,9 @@ system_filesize(int * arguments)
     int fl = ((int)file_length (t->fd_array[fd]->file));
     return fl;
   } else {
+        if (debug_mode) {
     printf ("File with fd=%d was not open, exiting...\n",fd);
+  }
     system_exit(-1);
   }
 }
@@ -233,9 +258,18 @@ system_filesize(int * arguments)
 static int
 system_open(int * arguments){
     char *file_name = ((char *) arguments[0]);
+
+    if (strlen(file_name) == 0) {
+          if (debug_mode) {
+      printf("Empty file name string for system_open(), exiting...\n");
+    }
+      return -1;
+    }
     
     if (is_valid_memory_access(file_name) == false) {
+          if (debug_mode) {
       printf ("Invalid memory access at %X, exiting...\n",file_name);
+    }
       system_exit(-1);
     }
 
@@ -244,14 +278,12 @@ system_open(int * arguments){
   
     if (open_file != NULL) {
       struct fd_info * fd_information = malloc(sizeof(struct fd_info));
-      fd_information->file_name = file_name;
       fd_information->file = open_file;
       int fd;
       int i;
       for (i = 2; i < 18; i++) {
         if (t->fd_array[i] == NULL) {
           fd = i;
-          //printf ("chose fd=%d\n",fd);
           break;
         }
       }
@@ -263,18 +295,22 @@ system_open(int * arguments){
       return fd;
 
     } else {
+          if (debug_mode) {
       printf ("File named %s could not be opened, exiting...\n",file_name);
-      system_exit(-1);
+    }
+      return -1;
     }
 }
 
 void
 system_exit(int status){
   struct thread * current_thread = thread_current();
+      if (debug_mode) {
   printf("%s: exit(%d)\n", current_thread->name, status);
   if (thread_exists(current_thread->parent)){
     set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
   }
+}
   thread_exit();
 }
 
@@ -294,7 +330,9 @@ system_read(int * arguments){
   struct thread *t = thread_current ();
   
   if (is_valid_memory_access (buffer) == false) {
+        if (debug_mode) {
     printf ("Invalid memory access at %X, exiting...\n",buffer);
+  }
     system_exit(-1);
   }
 
@@ -315,12 +353,16 @@ system_read(int * arguments){
       if (t->fd_array[fd] != NULL) {      
       return file_read (t->fd_array[fd]->file, buffer, size);
     } else {
+          if (debug_mode) {
       printf ("File with fd=%d was not open so could not be read, exiting...\n",fd);
+    }
       system_exit(-1);
     }
   } else {
     // INVALID FILE DESCRIPTOR
+        if (debug_mode) {
     printf ("Invalid file descriptor of %d, exiting...\n",fd);
+  }
     system_exit(-1);
   }
 }
@@ -346,7 +388,9 @@ system_write(int * arguments){
   }
 
   if (fd == 0) {
+        if (debug_mode) {
     printf("File descriptor of 0 is invalid for system_write().\n");
+  }
     system_exit(-1);
   }
 
@@ -387,17 +431,10 @@ static bool system_create(int * arguments){
   const unsigned initial_size = ((unsigned) arguments[1]);
   
   if(!is_valid_memory_access(file_name)) {
+        if (debug_mode) {
     printf("Invalid system_create pointer, exiting...\n");
-    system_exit(-1);
   }
-
-  int i;
-  struct thread * t = thread_current ();
-  for (i=0; i < 18; i++) {
-    if (t->fd_array[i] != NULL && t->fd_array[i]->file_name == file_name) {
-      printf("File named %d already exists, exiting...\n",file_name);
-      system_exit(-1);
-    }
+    system_exit(-1);
   }
 
   if (strlen(file_name) != 0) {
@@ -406,20 +443,33 @@ static bool system_create(int * arguments){
     result = filesys_create(file_name, initial_size);
     lock_release(&file_sys_lock);
   }
+  
+  if (result == false) {
+        if (debug_mode) {
+    printf ("system_create returns FALSE\n");
+  }
+  }
+
     return result;
 }
 
 
-// /* 
-//   Validates the file name.
-// */
-// static void
-// validate_file_name (const char * file_name) {
-//   if (*file_name == "") {
-//     printf("Invalid file name: %s, exiting...\n", *file_name);
-//     system_exit(-1);
-//   }
-// }
+/* 
+  Checks to see if a file named FILE_NAME already exists in the file system.
+*/
+static bool
+file_already_exists (const char * file_name) {
+  struct dir *dir = dir_open_root ();
+  struct inode *inode = NULL;
+  bool exists = false;
+  if (dir != NULL) {
+    exists = dir_lookup (dir, file_name, &inode);
+    dir_close (dir);
+  } else {
+    exists = false;
+  }
+  return exists;
+}
 
 /* 
   Validates the file descriptor.  Calls system_exit if invalid file descriptor.
@@ -433,10 +483,14 @@ validate_file_descriptor(const int fd) {
   }
 
   if (fd < 0 || fd >= 18) {
+        if (debug_mode) {
     printf("Invalid fie descriptor of value %d.\n");
+  }
     system_exit(-1);
   } else if (thread_current ()->fd_array[fd] == NULL) {
+        if (debug_mode) {
     printf("File descriptor %d not found in the fd_array.\n", fd);
+  }
     system_exit(-1);
   }
 }
@@ -450,15 +504,21 @@ is_valid_memory_access(const void *vaddr) {
 
 	if (vaddr == NULL) {
 		// Null Pointer
+        if (debug_mode) {
     printf ("--- addr is null pointer ---\n");
+  }
 		return false;
 	} else if (is_kernel_vaddr(vaddr)) { 
 		// Pointer to Kernel Virtual Address Space
+        if (debug_mode) {
     printf ("--- is kernel virtual address ---\n");
+  }
 		return false;
 	} else if (pagedir_get_page(thread_current ()->pagedir, vaddr) == NULL) { 
 		// Pointer to Unmapped Virtual Memory
+        if (debug_mode) {
     printf ("--- Unmapped ---\n");
+  }
 		return false;
 	}
 
@@ -471,5 +531,12 @@ get_arguments(struct intr_frame * f, int num_args, int * arguments){
   for (i = 0; i < num_args; i++){
     int * arg = (int *) f->esp + 1 + i;
     arguments[i] = *arg;
+  }
+}
+
+static void
+debug (char * debug_msg) {
+  if (debug_mode == true) {
+    printf("%s",debug_msg);
   }
 }
