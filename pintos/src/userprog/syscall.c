@@ -234,13 +234,13 @@ system_filesize(int * arguments)
 
   struct thread *t = thread_current ();
   
-  if (t->fd_array[fd] == NULL) {
+  if (t->fd_array[fd] != NULL) {
     int fl = ((int)file_length (t->fd_array[fd]->file));
     return fl;
   } else {
         if (debug_mode) {
     printf ("File with fd=%d was not open, exiting...\n",fd);
-  }
+       }
     system_exit(-1);
   }
 }
@@ -255,19 +255,21 @@ static int
 system_open(int * arguments){
     char *file_name = ((char *) arguments[0]);
 
-    if (strlen(file_name) == 0) {
+if (is_valid_memory_access(file_name) == false) {
+          if (debug_mode) {
+      printf ("Invalid memory access at %X, exiting...\n",file_name);
+    }
+      system_exit(-1);
+    }
+
+    if (file_name == NULL || strlen(file_name) == 0) {
           if (debug_mode) {
       printf("Empty file name string for system_open(), exiting...\n");
     }
       return -1;
     }
     
-    if (is_valid_memory_access(file_name) == false) {
-          if (debug_mode) {
-      printf ("Invalid memory access at %X, exiting...\n",file_name);
-    }
-      system_exit(-1);
-    }
+    
 
     struct file * open_file = filesys_open (file_name);
     struct thread *t = thread_current ();
@@ -301,9 +303,7 @@ system_open(int * arguments){
 void
 system_exit(int status){
   struct thread * current_thread = thread_current();
-      if (debug_mode) {
   printf("%s: exit(%d)\n", current_thread->name, status);
-}
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
   thread_exit();
 }
