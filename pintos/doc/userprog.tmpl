@@ -1,5 +1,5 @@
 		     +--------------------------+
-       	       	     |		CS 140		|
+       	     |			CS 402			|
 		     | PROJECT 2: USER PROGRAMS	|
 		     | 	   DESIGN DOCUMENT     	|
 		     +--------------------------+
@@ -8,18 +8,35 @@
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Devon Meyer <devonmey@usc.edu>
+Alex Young <youngale@usc.edu>
+Ryan Cleary <rcleary@usc.edu>
 
 ---- PRELIMINARIES ----
 
 >> If you have any preliminary comments on your submission, notes for the
 >> TAs, or extra credit, please give them here.
 
+
 >> Please cite any offline or online sources you consulted while
 >> preparing your submission, other than the Pintos documentation, course
 >> text, lecture notes, and course staff.
+
+	I.
+		We found a set of lecture slides prepared by other Universities about the Pintos project. Here are the links:
+
+		http://courses.cs.vt.edu/~cs3204/fall2009/pintos-vt-local/Project2Session.pdf
+		https://www.doc.ic.ac.uk/~mjw03/OSLab/task2slides-4up.pdf
+
+	II.
+		We also found two GitHub repositories that appeared to provide implementations of this project.
+
+		We did not actually use them, and no code from these repositories has been copied to our project.
+
+		Just letting you know. Here are the links:
+			https://github.com/ChrisKXu/pintos
+			https://github.com/rtwilson/Pintos-Project-2
+
 
 			   ARGUMENT PASSING
 			   ================
@@ -30,11 +47,34 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+Methods :
+
+static char* parse_process_name (char *cmdline);
+
+	- Takes in a char * of the command line and returns the name of the process
+
+static void parse_process_args(const char *cmdline, void **esp);
+
+	- Takes in a char * of the command line and pushes the arguments onto the argument stack.
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
->> How do you avoid overflowing the stack page?
+
+The "static bool load (const char *cmdline, void (**eip) (void), void **esp)" function sets up
+the user stack by calling setup_stack(...). After this, we initialize the stack.
+
+First we tokenize the command line arguments into an array of strings (char*). To push this data
+the stack, we decrement the stack pointer by the length of the string +1 (for null terminator),
+then use memcpy(destination, src, size) to copy the physical bytes. After each push we store
+the address at which the string is stored.
+
+We align the stack by using mod 4 and decrement the user stack by the mod result. Then we push a
+null pointer sentinel.
+
+Next, we push the addresses of each address of each string argument we previously pushed, using the
+same methodology. Finally we push argv, argc and a fake return address.
 
 ---- RATIONALE ----
 
@@ -53,9 +93,56 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+All of these changes can be found in thread.h
+	
+	I.
+		struct fd_info {
+      		int size;
+      		void *start_addr;
+      		char *file_name;
+      		struct file *file;
+		}
+
+		This is a wrapper struct for file descriptors, providing all relevant information.
+
+	II.
+
+		struct thread {
+			...
+		    uint32_t *pagedir;                
+			struct fd_info * fd_array[18];       
+			struct thread * parent;
+			struct list children;
+			...
+		}
+
+		These are additional variables added to the thread to hold page directory, array of file descriptors, parent of the thread, and list of the thread's children.
+
+	III.
+
+		struct child_process {
+			int pid;
+		 	int exit_status;
+		  	bool wait_called;
+		  	struct list_elem process_element;
+		  	bool has_exited;
+		}
+
+		This is a wrapper for a thread's child process to be utilized in SYSTEM_WAIT.
+
+
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+	
+	When a process wishes to open a file, the OS finds the lowest-numbered, available file descriptor. This file descriptor is a single number between 2 and 17-- there are only 16 possible files that can be stored on the Pintos filesystem. file descriptors 0 and 1 are reserved for stdin and stdout.
+
+	This generated FD is then assigned to the file. It then returns this file descriptor to the process, and adds the newly created fd_info object to the process's array of file descriptors.
+
+	File descriptors are unique only within a particular process.
+
 
 ---- ALGORITHMS ----
 
@@ -72,6 +159,8 @@ FirstName LastName <email@domain.example>
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
+	When a process calls system_wait, it passes in the pid of the child it desires to wait for. The wait system call then checks to see if the child_process struct associated with this child process is not the child of the calling thread, has already been waited on, or has already exited, in which case it returns immediately. If none of these cases are true, the call then does a busy wait (with a barrier() call to eliminate undesired compiler optimization), until the child process updates the child_process object associated with it to essentially notify the parent thread that it has exited.
+
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
 >> process to be terminated.  System calls are fraught with such
@@ -86,12 +175,23 @@ FirstName LastName <email@domain.example>
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+	First, we implemented a basic system call to ensure that any memory accesses passed into a system call are valid user memory accesses. This does not handle many faulty memory cases, such as a user trying to access kernel code outside of a system call. In this case, we simply added the desired behavior (described below) to the exception case to ensure that any time an erratic memory access is made, the system will behave correctly.
+
+	So, given that we had control of all situations that cause memory access failures, we have to ensure that the behavior carried out in these cases are desireable. In order to ensure this, we crafted the system_exit(status) call. In the case that a system exit occurs, we want to call thread_exit to free up all of the used memory and ensure that the thread does not continue to hold any locks.
+
+	But before we call thread_exit, we want to ensure that the status, if the exit is not caused by the kernel, is returned to the user who made the exit() call. Additionally, we want to update the exiting process's child_process struct to ensure that any process waiting on the child process can receive the correct exit status of the child process.
+
+	To give an example, if a user thread tries to write to a buffer, but the pointer to the buffer is actually a NULL pointer, then we call system_exit(-1), which updates the child_process struct, and calls thread_exit, freeing up the process's memory and locks held.
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+
+In system_exec, we require the returned pid to be checked to be a valid pid. If there was any kind of failure in the process_execute method, then this would return -1, causing a failure, which would indicate to the parent process that the child failed to load, and therefore returns an error.
+
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -100,16 +200,62 @@ FirstName LastName <email@domain.example>
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+(a) wait(C) before C exists --
+	Because C has not yet exited, it cannot have updated its child_process struct. Therefore P will be waiting on C until C has exited.
+
+(b) wait(C) after C exits --
+	C, upon exiting, updates the child_process struct associated with it. Therefore P, upon calling sys_wait, is immediately returned the exit status of the C.
+
+(c) All resources are freed --
+	thread_exit, called in any situation where C exits, does this.
+
+(d) P terminates without waiting before C exits --
+	In system_exit() we check to make sure that C's parent P is still a valid thread and still a part of the &allelem list by calling thread_exists(P). Therefore, if P no longer exists, we have no issue.
+
+(e) P terminates after C exits --
+	This is the basic case, and is supported.
+
+(f) Special cases --
+	None that we could think of beyond these cases.
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+Our implementation is a pretty simple 2 step process:
+	1. Call our created is_valid_memory_access() to ensure that the pointer passed in is valid and is not a kernel memory access (as it is only called when a user is passing an address, not the kernel)
+	2. Transform the pointer from a virtual address to a physical address by calling the following code:
+		pagedir_get_page(thread_current()->pagedir, virtual_addr);
+
+	The reasoning for this is because we wanted to keep the process simple and minimize code.
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
 
+	Advantages:
+		- Very simple, straightforward.
+		- FDs have a limited range -- 2-17
+		- No need for complex hashing mechanisms, because collisions cannot occur.
+
+	Disadvantages:
+		- Not very robust.
+		- Expanding the file system size of Pintos would require us to rewrite a few lines of code.
+		- FD 2 will get reused as long as it keeps getting closed, instead of having queue-like behavior, making it more difficult to debug errors if processes open and close multiple files at different times.
+
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+	We did not change it. We figured that because this project does not handle multi-threaded processes, we have no need to implement that functionality.
+
+	If we WERE to have changed it, in order to support multi-threaded processes, we'd likely create some sort of hierarchy to keep a constant time mapping between process and process threads. An example would be below:
+
+		pid_t == 001
+		available tid_t would range from {00100 -- 00199}
+		pid_t == XYZ
+		available tid_t would range from {XYZ00 -- XYZ99}
+
+		To be expanded in orders of magnitude as necessary.
 
 			   SURVEY QUESTIONS
 			   ================
@@ -123,14 +269,28 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+This particular assignment wasn't too bad, to be honest. It was just the right level of difficulty and required just the right amount of time commitment.
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+System calls seemed to be higher level architecture, while argument passing and user memory definitely took a lot more time and hard work. A lot of our difficulties in argument passing were debugging, which is certainly important, but never really too fun or enlightening.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
+Yes, unfortunately a lot of the guidance from instructors was misleading. We were given a number of very vague hints that actually led us in a very wrong direction.
+
+We feel that the difficulty of this assignment should require that the entire teaching staff are masters of pintos.
+
+I do feel like the teaching staff works very hard to try to help us -- that's not the problem. I feel like the teaching staff should do the assignment ahead of us, so that they can experience the same difficulties that we're experiencing, and be able to give us solid advice. :)
+
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
 
+See the last paragraph above.
+
 >> Any other comments?
+
+Nope! Thanks!

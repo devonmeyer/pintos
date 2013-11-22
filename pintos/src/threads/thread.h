@@ -25,6 +25,16 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+
+// /* The information associated with each file descriptor. */
+  struct fd_info {
+      int size;
+      void *start_addr;
+      //bool slot_is_empty;
+      struct file *file;
+      // size, name, begin addr, offset, etc. look at wherever the FD is stored later
+    };
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -105,11 +115,75 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    
+    struct fd_info * fd_array[18];       /* The array of file descriptors, indexed by the file descriptor number.
+                                          There are only 16 files in Pintos, but 0 and 1 are reserved fd values. */
+    struct thread * parent;
+
+    struct list children;
+
 #endif
+
+    //uint32_t pid; // might not need this
+
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
+struct child_process {
+  int pid;
+  int exit_status;
+  bool wait_called;
+  struct list_elem process_element;
+  bool has_exited;
+};
+
+
+// Exec
+/*
+  Called by A
+  Spawn new process B
+  Create new child_process with pid = B->pid, exit_status = -1, wait_called = false, has_exited = false;
+  Add child_process->process_element to A->children;
+  B->parent = A;
+  return B->pid;
+
+*/
+
+// Wait
+
+/*
+  A calls wait(B)
+  Do checks:
+    1. If B is not a member of A->children: return -1;
+    2. Find list element in A->children where elem->pid == B->pid -- if elem->wait_called == true: return -1;
+  
+  If we get to this point...
+  cp = child_process where cp->pid == B->pid
+  cp->wait_called = true;
+  while (!has_exited){
+    
+  }
+  return cp->exit_status;
+
+*/
+
+
+// Exit
+
+  /*
+
+  A calls exit
+
+  p = A->parent->elem (where elem->pid == A->pid)
+  p->exit_status = (-1 or passed exit_status)
+  p->has_exited = true;
+  thread_exit();
+
+  */
+
+
 
 /*
 
@@ -120,6 +194,7 @@ List element for priorities.
 struct prio {
   struct list_elem prio_elem;
   int priority;
+  struct thread * donator;
 };
 
 
@@ -127,6 +202,12 @@ struct prio {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+
+void set_child_of_thread(int pid);
+struct child_process * get_child_of_thread(struct thread * parent, int pid);
+void set_exit_status_of_child(struct thread * parent, int pid, int status);
+
+bool thread_exists(struct thread * t);
 
 void thread_init (void);
 void thread_start (void);
@@ -157,9 +238,10 @@ void thread_set_priority (int);
 int get_priority_of_thread (struct thread * t);
 
 
-void thread_donate_priority (struct thread * t, int);
-void thread_revoke_priority (struct thread * t, int);
+void thread_donate_priority (struct thread * t, struct thread * donator);
+void thread_revoke_priority (struct thread * t, struct thread * revoker);
 
+bool thread_has_highest_priority (struct thread * t);
 
 
 int thread_get_nice (void);

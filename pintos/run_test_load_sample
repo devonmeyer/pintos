@@ -1,0 +1,5 @@
+#!/bin/bash
+sudo pintos -f -q
+sudo pintos -p ../../tests/userprog/sample.txt -a sample.txt -- -q
+sudo pintos -p tests/userprog/$1 -a $1 -- -q
+sudo pintos -q run $1

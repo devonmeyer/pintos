@@ -20,19 +20,13 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* Values used for p.q fixed point arithmetic. 
-   Represents P=17 digits before the decimal point,
-   and Q=14 digits after the decimal point.*/
-#define FIXED_POINT_P 17
-#define FIXED_POINT_Q 14
+/* List of all processes.  Processes are added to this list
+   when they are first scheduled and removed when they exit. */
+static struct list all_list;
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
-
-/* List of all processes.  Processes are added to this list
-   when they are first scheduled and removed when they exit. */
-static struct list all_list;
 
 /* Lock used for the ready_list. */
 static struct lock ready_list_lock;
@@ -91,95 +85,6 @@ void thread_schedule_tail (struct thread *prev);
 static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 static struct thread *get_highest_priority_thread (void);
-static bool thread_has_highest_priority (struct thread * t);
-void update_load_avg (void);
-void recalculate_all_recent_cpu (void);
-static void recalculate_recent_cpu (struct thread * t, void * aux);
-void recalculate_all_priority (void);
-static void recalculate_priority (struct thread * t);
-static void recalculate_priority_foreach (struct thread * t, void * aux);
-
-static void count_num_ready_or_running_threads (void);
-static void ready_or_running_thread (struct thread * t, void * aux);
-
-/* Convert integer to fixed point. */
-static int int_to_fp (int n) {
-  int f = 1 << FIXED_POINT_Q; 
-  return n * f;
-}
-
-/* Convert fixed point to integer, rounding towards zero. */
-static int fp_to_int_r_zero (int fp) {
-    int f = 1 << FIXED_POINT_Q; 
-    return fp / f;
-} 
-
-/* Convert fixed point to integer, rounding to nearest. */
-static int fp_to_int_r_nearest (int fp) {
-    int f = 1 << FIXED_POINT_Q;
-
-    int sign_bit = fp >> (FIXED_POINT_P + FIXED_POINT_Q);
-
-
-    if (sign_bit) {
-      // fp is NEGATIVE
-      return (fp - (f/2)) / f; 
-    } else {
-      // fp is POSITIVE
-      return (fp + (f/2)) / f; 
-    }
-} 
-
-/* Add fixed point and integer. */
-static int fp_add_int (int fp, int n) {
-  int f = 1 << FIXED_POINT_Q; 
-  return fp + (n * f);
-}
-
-/* Add two fixed point values. */
-static int fp_plus_fp (int fp1, int fp2) {
-  return fp1 + fp2;
-}
-
-/* Subtract two fixed point values. */
-static int fp_minus_fp (int fp1, int fp2) {
-  return fp1 - fp2;
-}
-
-/* Add fixed point and integer. */
-static int fp_plus_int (int fp, int n) {
-  int f = 1 << FIXED_POINT_Q; 
-  return fp + (n * f);
-}
-
-/* Subtract integer from a fixed point. */
-static int fp_minus_int (int fp, int n) {
-  int f = 1 << FIXED_POINT_Q; 
-  return fp - (n * f);
-}
-
-/* Multiply fixed point by fixed point. */
-static int fp_times_fp (int fp1, int fp2) {
-  int f = 1 << FIXED_POINT_Q; 
-  return ((int64_t) fp1) * fp2 / f;
-}
-
-/* Multiply fixed point by integer. */
-static int fp_times_int (int fp, int n) {
-  return fp * n;
-}
-
-/* Divide fixed point by fixed point. */
-static int fp_div_by_fp (int fp1, int fp2) {
-  int f = 1 << FIXED_POINT_Q; 
-  return ((int64_t) fp1) * f / fp2;
-}
-
-/* Divide fixed point by integer. */
-static int fp_div_by_int (int fp, int n) {
-  return fp / n;
-}
-
 //static int get_priority_of_thread (struct thread * t);
 
 /* Initializes the threading system by transforming the code
@@ -323,8 +228,16 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+  t->parent = thread_current();
+  set_child_of_thread(t->tid);
+
+
   /* Add to run queue. */
   thread_unblock (t);
+
+  if (!thread_has_highest_priority (thread_current ())) {
+    thread_yield ();
+  }
 
   return tid;
 }
@@ -416,6 +329,7 @@ thread_exit (void)
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
+
   intr_disable ();
   //lock_acquire (&all_list_lock);
   list_remove (&thread_current()->allelem);
@@ -427,6 +341,7 @@ thread_exit (void)
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
+
 void
 thread_yield (void) 
 {
@@ -448,6 +363,7 @@ thread_yield (void)
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
+
 void
 thread_foreach (thread_action_func *func, void *aux)
 {
@@ -464,6 +380,7 @@ thread_foreach (thread_action_func *func, void *aux)
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
+
 void
 thread_set_priority (int new_priority) 
 {
@@ -474,6 +391,7 @@ thread_set_priority (int new_priority)
 }
 
 /* Gets the priority of the current thread. */
+
 int
 thread_get_priority (void) 
 {
@@ -483,54 +401,61 @@ thread_get_priority (void)
 /* Returns the current thread's priority if it has not been given a donated
    priority.  Otherwise, returns the top item from the thread's donated
    priority stack. */
+
 int 
 get_priority_of_thread (struct thread * t) {
-  if (list_empty (&t->donated_priorities))
-  {
+  if (list_empty (&t->donated_priorities)){
     return t->priority;
-  } else
-  {
+  } else {
     struct prio *pr = list_entry (list_front (&t->donated_priorities), struct prio, prio_elem);
-    return pr->priority;
+    if( pr->priority > t->priority ){
+      return pr->priority;
+    } else {
+      return t->priority;
+    }
   }
 }
 
 
 /*
 
-  Add p to the thread t's stack of donated priorities.
+  Add p to the thread t's stack of donated priorities by creating a prio_element and adding it
+  to the stack of donated priorities.
 
 */
 void
-thread_donate_priority (struct thread * t, int p){
+thread_donate_priority (struct thread * t, struct thread * donator){
+  //ASSERT (intr_get_level () == INTR_OFF);
   struct prio * pr = malloc(sizeof(struct prio));
-  pr->priority = p;
-  list_push_front(&t->donated_priorities, pr);
+  pr->donator = donator;
+  pr->priority = get_priority_of_thread(donator);
+  list_push_front(&t->donated_priorities, &pr->prio_elem);
 }
 
 
 /*
 
-  Remove p from the thread's stack of donated priorities
+  Remove revoker from the thread's stack of donated priorities.
+
+  Essentially, find the priority donation that was given to t by revoker, and remove it.
 
 */
 void
-thread_revoke_priority (struct thread * t, int p){
-  
-  ASSERT(!list_empty(&t->donated_priorities));
-  //printf("num of donated priorities : %d", list_size (&t->donated_priorities));
+thread_revoke_priority (struct thread * t, struct thread * revoker){
+  //ASSERT(!list_empty(&t->donated_priorities));
+  //ASSERT (intr_get_level () == INTR_OFF);
+
   struct list_elem *e;
 
   for (e = list_begin (&t->donated_priorities); e != list_end (&t->donated_priorities);
        e = list_next (e))
     {
       struct prio *pr = list_entry (e, struct prio, prio_elem);
-      if (pr->priority == p){
-        list_remove(e);
+      if (pr->donator == revoker){
+        list_remove(&pr->prio_elem);
         return;
       }
     }
-
 }
 
 
@@ -772,6 +697,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->wake_up_time = 0;
   list_init (&t->donated_priorities);
+  list_init (&t->children);
+  t->parent = NULL;
+  struct fd_info * fd_array[18];
 
   
   if (list_empty (&all_list)) {
@@ -781,6 +709,25 @@ init_thread (struct thread *t, const char *name, int priority)
     t->recent_cpu_fp = thread_current ()->recent_cpu_fp; // The PARENT THREAD's recent cpu value
     t->nice = thread_current ()->nice; // The PARENT THREAD's nice value
   }
+
+#ifdef USERPROG
+  /*
+  int i;
+  struct fd_info * fdi = malloc(sizeof(struct fd_info));
+  fdi->file = NULL;
+  fdi->slot_is_empty = true;
+  fdi->size = 0;
+  fdi->start_addr = NULL;
+  for (i = 2; i < 18; i++) {
+    t->fd_array[i] = fdi;
+  }
+  */
+  int i;
+  for(i = 0; i < 18; i++){
+    t->fd_array[i] = NULL;
+  }
+
+#endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -815,6 +762,15 @@ next_thread_to_run (void)
     //return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
+/*
+
+  Returns the highest priority ready thread, and removes it from the ready list.
+
+  Called by next_thread_to_run()
+
+*/
+
+
 static struct thread *
 get_highest_priority_thread (void)
 {
@@ -826,23 +782,38 @@ get_highest_priority_thread (void)
   ASSERT (!list_empty (&ready_list));
 
   // Get the priority of the first thread in the list
-  struct thread * highest = list_entry (list_begin (&ready_list), struct thread, elem);
+  struct thread * highest = NULL;
 
   for (e = list_begin (&ready_list); e != list_end (&ready_list);
        e = list_next (e))
     {
       struct thread *t = list_entry (e, struct thread, elem);
-      if (get_priority_of_thread(t) > get_priority_of_thread(highest)) {
-        highest = t;
+      if (t->status == THREAD_READY){
+        if (highest == NULL){
+          highest = t;
+        } else {
+          if (get_priority_of_thread(t) > get_priority_of_thread(highest)) {
+            highest = t;
+          }
+        }
       }
     }
-
+  if(highest == NULL){
+    return idle_thread;
+  }
   list_remove(&highest->elem); // remove the highest priority thread from the ready list (we used to "pop" it off)
 
   return highest;
 }
 
-static bool
+/*
+
+  This method returns true if the current-running thread is the highest priority.
+  Used whenever a new thread is added to the ready queue, to determine if we should yield the processor to that new thread.
+
+*/
+
+bool
 thread_has_highest_priority (struct thread * t)
 {
   struct list_elem *e;
@@ -852,7 +823,7 @@ thread_has_highest_priority (struct thread * t)
        e = list_next (e))
     {
       struct thread *ready_thread = list_entry (e, struct thread, elem);
-      if (get_priority_of_thread(ready_thread) > get_priority_of_thread (t)) {
+      if ((get_priority_of_thread(ready_thread) >= get_priority_of_thread (t)) && (ready_thread->status == THREAD_READY)) {
         return false;
       }
     }
@@ -971,6 +942,13 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+  //printf ("\n %s, %s, %s \n", prev->name, cur->name, next->name);
+  /*if (prev != NULL){
+    printf("\n prev: %s, %d", prev->name, get_priority_of_thread(prev));
+  }
+  if (cur->tid != next->tid){
+    printf("\n cur: %s, %d => next: %s, %d \n", cur->name, get_priority_of_thread(cur), next->name, get_priority_of_thread(next));
+  }*/
 }
 
 /* Returns a tid to use for a new thread. */
@@ -990,3 +968,88 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+
+/*
+
+Sets the parent of the thread with the specified pid to be the current running thread.
+
+
+
+void
+set_parent_of_thread(int pid){
+  printf("pid to be set parent = %d, name of parent thread = %s\n", pid, thread_current()->name);
+  struct list_elem *e;
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if(((int) t->tid) == (pid)){
+        t->parent = thread_current();
+      }
+    }
+}
+*/
+/*
+
+Sets the specified pid as the child of the current running thread.
+
+*/
+
+void
+set_child_of_thread(int pid){
+  struct child_process * child = malloc(sizeof(struct child_process));
+  child->pid = pid;
+  child->exit_status = -1;
+  child->wait_called = false;
+  child->has_exited = false;
+  list_push_back(&thread_current()->children, &child->process_element);
+}
+
+struct child_process *
+get_child_of_thread(struct thread * t, int pid){
+  struct list_elem *e;
+  for (e = list_begin (&t->children); e != list_end (&t->children);
+       e = list_next (e))
+    {
+      struct child_process * child = list_entry (e, struct child_process, process_element);
+      if (pid == child->pid){
+        return child;
+      }
+    }
+  return NULL;
+}
+
+void
+set_exit_status_of_child(struct thread * parent, int pid, int status){
+  struct list_elem *e;
+  for (e = list_begin (&parent->children); e != list_end (&parent->children);
+       e = list_next (e))
+    {
+      struct child_process * child = list_entry (e, struct child_process, process_element);
+      if (pid == child->pid){
+        child->has_exited = true;
+        child->exit_status = status;
+
+      }
+    }
+}
+
+bool
+thread_exists(struct thread * t){
+  struct list_elem *e;
+
+  if(!is_thread(t)){
+    return false;
+  }
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t_exists = list_entry (e, struct thread, allelem);
+      if(t_exists->tid == t->tid){
+        return true;
+      }      
+    }
+  return false;
+}
+

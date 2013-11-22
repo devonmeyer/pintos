@@ -1,0 +1,6 @@
+#!/bin/bash
+sudo make clean
+sudo make
+sudo pintos -f -q
+sudo pintos -p tests/userprog/$1 -a $1 -- -q
+sudo pintos -q run $1

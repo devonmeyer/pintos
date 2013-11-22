@@ -17,32 +17,163 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+
+#define MAX_ARGS 25
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static char* parse_process_name (char *cmdline);
+static void parse_process_args(const char *cmdline, void **esp);
+static void push_onto_user_stack(void **esp, void *data, int size);
+static void push_4bytes_onto_user_stack(void **esp, void *data);
+static void align_user_stack(void **esp);
+
+static bool is_valid_memory_access(const void *vaddr);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
 tid_t
-process_execute (const char *file_name) 
+process_execute (const char *cmdline) 
 {
   char *fn_copy;
   tid_t tid;
-
+  //printf("%s\n", cmdline);
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (fn_copy, cmdline, PGSIZE);
 
+  /* Parse process name from command line input 
+     and pass it to thread_create */
+  char *process_name = parse_process_name(cmdline);
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
+  tid = thread_create (process_name, PRI_DEFAULT, start_process, fn_copy);
+  // printf("Process name: %s\n", process_name);
+  // tid = thread_create (cmdline, PRI_DEFAULT, start_process, fn_copy);
+  if (tid == TID_ERROR){
     palloc_free_page (fn_copy); 
+  }
   return tid;
+}
+
+/* Parses the first argument from the command line input,
+   which should be the process name and returns it
+*/
+static char* 
+parse_process_name (char *cmdline)
+{
+  /* I was running into problems where the input into this function
+     was being modified in the scope of load so I created a temporary
+     buffer so that the original input remained unchanged
+  */
+  char buffer[100];
+  strlcpy(buffer, cmdline, (strlen(cmdline)+1));
+
+  const char *delimiters = " ";
+  char *save_ptr; // Address used to keep track of tokenizer's position
+  
+  char *process_name = strtok_r(buffer, delimiters, &save_ptr);
+  return process_name;
+}
+
+/* Parses the remaining arguments from the command line input,
+   which should be the process arguments and pushes them onto the user stack
+*/
+static void
+parse_process_args(const char *cmdline, void **esp)
+{
+  int argc = 0;
+  char *argv[MAX_ARGS];
+
+  int i;
+  for(i = 0; i < MAX_ARGS; i++) { // Initialize argv
+    argv[i] = 0;
+  }
+
+  char *delimiters = " ";
+  char *token, *save_ptr;
+
+  // Parse each argument into argv
+  for(token = strtok_r(cmdline, delimiters, &save_ptr); token != NULL; token = strtok_r(NULL, delimiters, &save_ptr)) {
+    argv[argc] = token;
+    // printf("argc: %i, argv: %s\n", argc, argv[argc]);
+    argc++;
+  }
+
+  void *argv_addresses[argc];
+
+  // Round stack pointer to nearest multiple of 4
+  align_user_stack(esp);
+
+  // Push argv[i]
+  for(i = argc-1; i >= 0; i--) {
+    int size = strlen(argv[i])+1;
+    push_onto_user_stack(esp, argv[i], size);
+    // printf("Address: %-15X Data: %-15s Name: argv[%i][...]\n", *esp, *(char**)*esp, i);][...]\n", *esp, *(char**)*esp, i);
+    argv_addresses[i] = *esp; // Store address to push onto stack later
+  }
+
+  // Word align
+  align_user_stack(esp);
+  
+  // Push address of argv[argc]
+  push_4bytes_onto_user_stack(esp, &argv[argc]);
+  // printf("Address: %-15X Data: %-15X Name: argv[%i]\n", *esp, *(char**)*esp, argc);
+
+  // Push address of argv[i]
+  for(i = argc-1; i >= 0; i--) {
+    // char *addr = pagedir_get_page(thread_current()->pagedir, argv_addresses[i]);
+    // push_4bytes_onto_user_stack(esp, &addr);
+    push_4bytes_onto_user_stack(esp, &argv_addresses[i]);
+    // printf("Address: %-15X Data: %-15X Name: argv[%i]\n", *esp, *(char**)*esp, i);
+  }
+
+  // Push argv
+  char *argv_pointer = (char*)(*esp);
+  push_4bytes_onto_user_stack(esp, &argv_pointer);
+  // printf("Address: %-15X Data: %-15X Name: argv\n", *esp, *(char**)*esp);
+
+  // Push argc
+  push_4bytes_onto_user_stack(esp, &argc);
+  // printf("Address: %-15X Data: %-15X Name: argc\n", *esp, *(int*)*esp);
+  
+  // Push return address
+  int null_ptr = 0;
+  push_4bytes_onto_user_stack(esp, &null_ptr);
+  // printf("Address: %-15X Data: %-15X Name: return address\n", *esp, *(char**)*esp);
+
+}
+
+/* Decrements the user stack and copies data to the current address */
+static void
+push_onto_user_stack(void **esp, void *data, int size)
+{
+  *esp -= size;
+  memcpy(*esp, data, size);
+}
+
+/* Decrements the user stack by 4 bytes and copies data to the current address */
+static void
+push_4bytes_onto_user_stack(void **esp, void *data)
+{
+  push_onto_user_stack(esp, data, 4);
+}
+
+/* Rounds down the stack pointer to the nearest multiple of 4 */
+static void 
+align_user_stack(void **esp)
+{
+  int alignment = (uint16_t)*esp % 4;
+  if(alignment > 0) {
+    *esp -= alignment;
+  }
 }
 
 /* A thread function that loads a user process and starts it
@@ -51,6 +182,7 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
+  // printf("Commandline in start_process: %s\n", file_name);
   struct intr_frame if_;
   bool success;
 
@@ -88,7 +220,41 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  return -1;
+  /*
+
+  A calls wait(B)
+  Do checks:
+    1. If B is not a member of A->children: return -1;
+    2. Find list element in A->children where elem->pid == B->pid -- if elem->wait_called == true: return -1;
+  
+  If we get to this point...
+  cp = child_process where cp->pid == B->pid
+  cp->wait_called = true;
+  while (!has_exited){
+    
+  }
+  return cp->exit_status;
+
+  */
+
+  struct thread * tc = thread_current();
+  //printf("child pid = %d \n", child_tid);
+  //printf("parent pid = %d \n", (int) tc->tid);
+  //printf("parent name = %s \n", tc->name);
+  struct child_process * cp = get_child_of_thread(tc, child_tid);
+  if (cp == NULL){
+    //printf ("child pid is not valid - returning -1\n");
+    return -1;
+  }
+  if (cp->wait_called){
+    //printf ("wait has already been called on child - returning -1\n");
+    return -1;
+  }
+  while (!cp->has_exited){
+    barrier();
+  }
+  //printf("Process has exited. returning status of %d\n", cp->exit_status);
+  return cp->exit_status;
 }
 
 /* Free the current process's resources. */
@@ -206,8 +372,9 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (const char *cmdline, void (**eip) (void), void **esp) 
 {
+  // printf("Commandline in load: %s\n", cmdline);
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
   struct file *file = NULL;
@@ -222,6 +389,14 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
+
+  // char *file_name = parse_process_name(cmdline); /* For some reason this function returns garbage here */
+  char buffer[100];
+  strlcpy(buffer, cmdline, (strlen(cmdline)+1));
+  char *save_ptr; // Address used to keep track of tokenizer's position
+  char *file_name = strtok_r(buffer, " ", &save_ptr);
+
+  // printf("File name in load: %s\n", file_name);
   file = filesys_open (file_name);
   if (file == NULL) 
     {
@@ -307,6 +482,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
+
+  parse_process_args(cmdline, esp);
 
   success = true;
 
@@ -462,4 +639,27 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+/* 
+  Returns true if the memory address is valid and can be accessed by the user process.
+*/
+static bool
+is_valid_memory_access(const void *vaddr) {
+
+  if (vaddr == NULL) {
+    // Null Pointer
+    printf ("--- addr is null pointer ---\n");
+    return false;
+  } else if (is_kernel_vaddr(vaddr)) { 
+    // Pointer to Kernel Virtual Address Space
+    printf ("--- is kernel virtual address ---\n");
+    return false;
+  } else if (pagedir_get_page(thread_current ()->pagedir, vaddr) == NULL) { 
+    // Pointer to Unmapped Virtual Memory
+    printf ("--- Unmapped ---\n");
+    return false;
+  }
+
+  return true;
 }
