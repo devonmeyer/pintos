@@ -575,8 +575,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
+      
+      if (kpage == NULL) // NO PAGES ARE AVAILABLE
+      {
+        // Perform eviction
+
+
         return false;
+      }
 
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
@@ -597,6 +603,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+
+      // Frame Table:
+      // Take only the upper 20 bits (the frame #, the page #)
+      add_entry_ft(pagedir_get_page (t->pagedir, upage)>>12,upage>>12); 
     }
   return true;
 }
