@@ -24,7 +24,6 @@ static int64_t ticks;
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
-
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
@@ -175,17 +174,8 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  // The timing of this is VERY important
-  if (timer_ticks () % TIMER_FREQ == 0) {
-    update_load_avg ();
-    recalculate_all_recent_cpu ();
-  }
-  
   thread_tick ();  
-
   enum intr_level old_level = intr_disable ();
-
-
   wake_up_sleeping_threads ();
   intr_set_level (old_level);
 }

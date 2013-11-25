@@ -107,11 +107,6 @@ struct thread
 
     struct list donated_priorities;       /* The list of donated priorities. (int's) */
 
-    int recent_cpu_fp;                    /* A "FIXED POINT" value that 
-                                          represents the amount of CPU time the 
-                                          thread has received "recently". */
-    int nice;                             /* Represents how "nice" a thread is. [-20,20] */
-
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
