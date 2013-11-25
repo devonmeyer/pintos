@@ -39,12 +39,17 @@ pagedir_destroy (uint32_t *pd)
         uint32_t *pt = pde_get_pt (*pde);
         uint32_t *pte;
         
-        for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++)
-          if (*pte & PTE_P) 
-            palloc_free_page (pte_get_page (*pte));
-        palloc_free_page (pt);
+          for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++) {
+            if (*pte & PTE_P) {
+              palloc_free_page (pte_get_page (*pte));
+              remove_entry_ft(pagedir_get_page(pte<<12));
+            }
+            palloc_free_page (pt);
+            remove_entry_ft(pagedir_get_page(pt<<12));
+          }
       }
   palloc_free_page (pd);
+  remove_entry_ft(pagedir_get_page(pd<<12));
 }
 
 /* Returns the address of the page table entry for virtual
