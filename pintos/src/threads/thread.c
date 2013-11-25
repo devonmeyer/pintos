@@ -43,12 +43,6 @@ static struct thread *initial_thread;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
-/* A "FIXED POINT" value that estimates the average number of 
-   threads ready to run over the past minute. */
-static int load_avg_fp;
-
-static int num_ready_or_running;
-
 /* Stack frame for kernel_thread(). */
 struct kernel_thread_frame 
   {
@@ -117,9 +111,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  
-  /* Initialize the system's load_avg. */
-  load_avg_fp = 0 * (1 << FIXED_POINT_Q); // convert 0 to fixed point
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -156,17 +147,9 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  /* Each time a timer interrupt occurs, recent_cpu is incremented by 1 for 
-     the running thread only, unless the idle thread is running. */
-  if (thread_current () != idle_thread) {
-    thread_current ()->recent_cpu_fp = fp_add_int (thread_current ()->recent_cpu_fp, 1);
-  }
-
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE) {
-    recalculate_all_priority (); // once every fourth clock tick!
+  if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
-  }
 }
 
 /* Prints thread statistics. */
@@ -459,153 +442,36 @@ thread_revoke_priority (struct thread * t, struct thread * revoker){
 }
 
 
-/* Updates the system's load average. Called by timer.c. */
+
+/* Sets the current thread's nice value to NICE. */
 void
-update_load_avg (void)
+thread_set_nice (int nice UNUSED) 
 {
-    // formula: load_avg = (59/60)*load_avg + (1/60)*ready_threads,
-    // annotated1: load_avg = (A * load_avg) + (B * ready_threads)
-    // annotated2: load_avg =       (C)      +     (D)
-
-    int fifty_nine_fp = int_to_fp (59);
-    int one_fp = int_to_fp (1);
-
-    int A_fp = fp_div_by_int (fifty_nine_fp, 60);
-    int B_fp = fp_div_by_int (one_fp, 60);
-
-    int C_fp = fp_times_fp (A_fp, load_avg_fp);
-//    count_num_ready_or_running_threads ();
-    int D_fp = fp_times_fp (B_fp, list_size (&ready_list));
-
-
-    // Now that the variables are set, actually update the load avg value
-    load_avg_fp = fp_plus_fp (C_fp, D_fp);
-}
-
-// Count the number of ready or running threads that aren't the idle thread!
-static void 
-count_num_ready_or_running_threads (void) 
-{
-    num_ready_or_running = 0;
-    thread_foreach (ready_or_running_thread, NULL);
-}
-
-// Helper function
-static void 
-ready_or_running_thread (struct thread * t, void * aux)
-{
-  if ((t->status == THREAD_READY || t->status == THREAD_RUNNING) && t != idle_thread) 
-  {
-    num_ready_or_running++;
-  }
-}
-
-/* Recalculates all of the thread's priorities according the the MLFQS. 
-   Called once every 4 timer ticks. */
-void 
-recalculate_all_priority (void)
-{
-  thread_foreach (recalculate_priority_foreach, NULL);
-}
-
-/* Helper function to be used in the thread_foreach call. */
-static void 
-recalculate_priority_foreach (struct thread * t, void * aux)
-{
-  recalculate_priority (t);
-}
-
-/* Recalculates the given thread's priority. */
-static void 
-recalculate_priority (struct thread * t) 
-{
-  // formula: priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
-  // annotated: priority = pri_max_p fp - A - B
-
-  int pri_max_fp = int_to_fp (PRI_MAX);
-  int A_fp = fp_div_by_int (t->recent_cpu_fp, 4);
-  int B_fp = int_to_fp (t->nice * 2);
-
-  int priority_fp = pri_max_fp - A_fp - B_fp;
-  
-  int priority_int = fp_to_int_r_nearest (priority_fp);
-  if (priority_int < PRI_MIN) {
-    priority_int = PRI_MIN;
-  } else if (priority_int > PRI_MAX) {
-    priority_int = PRI_MAX;
-  }
-
-  // And finally set the thread's priority
-  t->priority = priority_int;
-}
-
-
-/* Recalculates every thread's respective recent cpu values. Called by timer.c. */
-void
-recalculate_all_recent_cpu (void)
-{
-  thread_foreach(recalculate_recent_cpu, NULL);
-}
-
-/* Called on every thread in the system. Recalculates the thread's recent cpu value. */
-static void
-recalculate_recent_cpu (struct thread * t, void * aux)
-{
-  //formula: recent_cpu_fp = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice.
-  //annotated: recent_cpu_fp = A / B * recent_cpu_fp + nice
-
-  int f = 1 << FIXED_POINT_Q; // for conversion to fixed point
-  int A_fp = (2 * load_avg_fp);
-  int B_fp = (A_fp + (1 * f));
-  int nice_fp = t->nice * f;
-
-
-  t->recent_cpu_fp = A_fp / B_fp * t->recent_cpu_fp + nice_fp;
-}
-
-/* Sets the current thread's nice value to NEW_NICE. */
-void
-thread_set_nice (int new_nice) 
-{
-  // Clamp the new_nice value to the min / max bounds
-  if (new_nice > 20) {
-    new_nice = 20;
-  } else if (new_nice < -20) {
-    new_nice = -20;
-  }
-
-  thread_current ()->nice = new_nice;
-  recalculate_priority (thread_current ());
-
-  if (!thread_has_highest_priority (thread_current ())) {
-    thread_yield ();
-  }
+  /* Not yet implemented. */
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  return thread_current ()->nice;
+  /* Not yet implemented. */
+  return 0;
 }
 
-/* Returns 100 times the current system load average, rounded to the nearest integer. */
+/* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  int f = 1 << FIXED_POINT_Q; // for conversion to fixed point
-  int load_avg_int = fp_to_int_r_nearest (load_avg_fp);
-
-  return 100 * load_avg_int;
+  /* Not yet implemented. */
+  return 0;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  int fp = thread_current ()->recent_cpu_fp;
-  int recent_cpu_int = fp_to_int_r_nearest (fp_times_int (fp, 100));
-  return recent_cpu_int;
+  /* Not yet implemented. */
+  return 0;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -701,14 +567,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = NULL;
   struct fd_info * fd_array[18];
 
-  
-  if (list_empty (&all_list)) {
-    t->recent_cpu_fp = 0; // "The initial value of recent_cpu is 0 in the  first thread created"
-    t->nice = 0; // Initial thread starts with a nice value of 0
-  } else {
-    t->recent_cpu_fp = thread_current ()->recent_cpu_fp; // The PARENT THREAD's recent cpu value
-    t->nice = thread_current ()->nice; // The PARENT THREAD's nice value
-  }
 
 #ifdef USERPROG
   /*
