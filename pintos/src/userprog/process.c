@@ -604,10 +604,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
-
-      // Frame Table:
-      // Take only the upper 20 bits (the frame #, the page #)
-      add_entry_ft(pagedir_get_page (t->pagedir, upage)>>12,upage>>12); 
     }
   return true;
 }
@@ -648,8 +644,18 @@ install_page (void *upage, void *kpage, bool writable)
 
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
-  return (pagedir_get_page (t->pagedir, upage) == NULL
+  bool valid =  (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+
+  if (valid) {
+    // Frame Table:
+    // Take only the upper 20 bits (the frame #, the page #)
+    // pg_no: returns only the upper 20 bits
+    // vtop: Kernel VA -> Kernel PA
+    add_entry_ft(vtop(pg_no(kpage)),pg_no(upage)); 
+  }
+
+  return valid;
 }
 
 /* 
