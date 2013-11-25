@@ -107,8 +107,6 @@ struct thread
 
     struct list donated_priorities;       /* The list of donated priorities. (int's) */
 
-#ifdef USERPROG
-    /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     
     struct fd_info * fd_array[18];       /* The array of file descriptors, indexed by the file descriptor number.
@@ -117,7 +115,6 @@ struct thread
 
     struct list children;
 
-#endif
 
     //uint32_t pid; // might not need this
 
