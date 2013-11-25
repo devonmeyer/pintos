@@ -1,7 +1,8 @@
 #include "vm/frame.h"
-
+#include "vm/page.h"
 void
 initialize_ft (void){
+	init_spt();
 	lock_init(&ft_lock);
 	list_init(&ft_list);
 }

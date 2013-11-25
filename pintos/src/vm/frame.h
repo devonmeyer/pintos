@@ -2,6 +2,7 @@
 #include "threads/synch.h"
 #include "threads/malloc.h"
 #include "userprog/pagedir.h"
+#include "page.h"
 
 struct list ft_list;
 
