@@ -243,4 +243,6 @@ int thread_get_load_avg (void);
 
 void wake_up_sleeping_threads (void);
 
+void reset_all_accessed_bits (void);
+
 #endif /* threads/thread.h */
