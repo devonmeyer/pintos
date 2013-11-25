@@ -8,6 +8,8 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
   
+#define RESET_ACCESSED_BITS_FREQ 500000000000
+
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -177,6 +179,9 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();  
   enum intr_level old_level = intr_disable ();
   wake_up_sleeping_threads ();
+  if(ticks/RESET_ACCESSED_BITS_FREQ) {
+    reset_all_accessed_bits();
+  }
   intr_set_level (old_level);
 }
 

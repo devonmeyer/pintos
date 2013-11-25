@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/pte.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -80,6 +81,34 @@ static void wake_up_thread (struct thread * t, void * aux);
 static tid_t allocate_tid (void);
 static struct thread *get_highest_priority_thread (void);
 //static int get_priority_of_thread (struct thread * t);
+
+void
+reset_all_accessed_bits (void)
+{
+  // Iterate through processes in all_list
+  struct list_elem *e;
+  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e)) {
+    struct thread *t = list_entry (e, struct thread, allelem);
+    uint32_t *pd = t->pagedir;
+    uint32_t *pde;
+
+    /* Iterate through page directory entries (page tables) 
+       in each thread's page directory */
+    for (pde = pd; pde < pd + pd_no (PHYS_BASE); pde++)
+      if (*pde & PTE_P) { // (PTE_P is defined in pte.h)
+        uint32_t *pt = pde_get_pt (*pde);
+        uint32_t *pte;
+
+        /* Iterate through page table entries (pages)
+           in each page table */
+        for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++) {
+          if (*pte & PTE_P) {
+            *pte &= ~(uint32_t) PTE_A; // Set page's accessed bit to 0
+          }
+        }
+      }
+    }
+}
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
