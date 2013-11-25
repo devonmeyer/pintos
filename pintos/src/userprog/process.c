@@ -20,6 +20,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "vm/frame.h"
 
 #define MAX_ARGS 25
 
