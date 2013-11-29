@@ -33,11 +33,12 @@ spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
 	SWAP_SLOT = -1 if it is memory mapped IO. 
 	Otherwise, it is the valid index into the swap table. */
 void 
-add_entry(void *vaddr, struct file *f, int swap_slot) {
+add_entry(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
 	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
 	spte->file = f;
 	spte->page_num = pg_no(vaddr);
-	spte->swap_slot = swap_slot;
+  spte->in_swap = in_swap;
+  spte->mem_mapped_io = mem_mapped_io;
 
 	hash_insert (&sup_page_table, &spte->hash_elem);
 }
@@ -50,10 +51,19 @@ get_entry(const void *vaddr) {
   struct spt_entry spte;
   struct hash_elem *e;
 
-  spte.page_num = pg_no(vaddr);
+  spte.page_num = pg_no (vaddr);
   e = hash_find (&sup_page_table, &spte.hash_elem);
   return e != NULL ? hash_entry (e, struct spt_entry, hash_elem) : NULL;
 }
+
+
+/* Returns TRUE if the page at the given virtual address is stored in
+   the swap partition. */
+bool 
+page_is_in_swap (const void *vaddr) {
+  return get_entry (vaddr)->in_swap;
+}
+
 
 
 
