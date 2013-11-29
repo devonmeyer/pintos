@@ -593,6 +593,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->wake_up_time = 0;
   list_init (&t->donated_priorities);
   list_init (&t->children);
+  init_sup_page_table ();
   t->parent = NULL;
   struct fd_info * fd_array[18];
 

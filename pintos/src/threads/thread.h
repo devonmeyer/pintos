@@ -115,10 +115,6 @@ struct thread
 
     struct list children;
 
-
-    //uint32_t pid; // might not need this
-
-
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

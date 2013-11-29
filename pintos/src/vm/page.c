@@ -3,7 +3,7 @@
 
 /* Initialize the supplemental page table. */
 void
-init_spt (void) {
+init_sup_page_table (void) {
 	hash_init (&sup_page_table, spt_entry_hash, spt_entry_less, NULL);
 }
 
