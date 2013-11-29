@@ -20,6 +20,11 @@ struct spt_entry {
 	bool mem_mapped_io;
 };
 
+struct page_num_item {
+	struct list_elem elem; /* List element. */
+	void *page_num; /* The virtual page number. */
+};
+
 void init_spt(void);
 
 unsigned spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED);
@@ -27,5 +32,8 @@ bool spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_, voi
 void add_entry(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io);
 struct spt_entry* get_entry(const void *vaddr);
 bool page_is_in_swap (const void *vaddr);
+bool swap_page_out (const void *vaddr);
+bool swap_page_in (const void *vaddr);
+struct list get_all_swapped_out_page_nums (void);
 
 #endif /* PAGE.H */

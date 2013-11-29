@@ -29,9 +29,7 @@ spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 
-/* Add an entry to the supplemental page table. 
-	SWAP_SLOT = -1 if it is memory mapped IO. 
-	Otherwise, it is the valid index into the swap table. */
+/* Add an entry to the supplemental page table. */
 void 
 add_entry(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
 	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
@@ -64,6 +62,61 @@ page_is_in_swap (const void *vaddr) {
   return get_entry (vaddr)->in_swap;
 }
 
+
+/* Notifies the supplemental page table that the page at virtual address VADDR
+   is getting swapped out, that is, stored to the swap partition. Returns TRUE
+   if the page lookup was successful (if the page was in the supplemental page
+   table) and FALSE otherwise. */
+bool
+swap_page_out (const void *vaddr) {
+  struct spt_entry *spte = get_entry (vaddr);
+  if (spte == NULL) {
+    return false;
+  } else {
+    spte->in_swap = false;
+    return true;
+  }
+}
+
+/* Notifies the supplemental page table that the page at virtual address VADDR
+   is being swapped in, that is, stored to memory from the swap partition. 
+   Returns TRUE if the page lookup was successful (if the page was in the 
+   supplemental page table) and FALSE otherwise. */
+bool
+swap_page_in (const void *vaddr) {
+  struct spt_entry *spte = get_entry (vaddr);
+  if (spte == NULL) {
+    return false;
+  } else {
+    spte->in_swap = true;
+    return true;
+  }
+}
+
+
+/* Returns a list of all of the page numbers of pages that are swapped out for
+   this supplemental page table. */
+struct list 
+get_all_swapped_out_page_nums (void) {
+  struct list swapped_out_page_nums;
+  list_init (&swapped_out_page_nums);
+
+  struct hash_iterator i;
+
+  hash_first (&i, &sup_page_table);
+
+  while (hash_next (&i))
+  {
+    struct spt_entry *spte = hash_entry (hash_cur (&i), struct spt_entry, hash_elem);
+    if (spte->in_swap == true) {
+      struct page_num_item pni;
+      pni.page_num = spte->page_num;
+      list_push_back (&swapped_out_page_nums, &pni.elem);
+    }
+  }
+
+  return swapped_out_page_nums;
+}
 
 
 
