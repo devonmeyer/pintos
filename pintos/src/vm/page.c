@@ -1,8 +1,6 @@
 #include "vm/page.h"
 
 
-
-
 /* Initialize the supplemental page table. */
 void
 init_spt (void) {
@@ -36,9 +34,9 @@ spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
 	Otherwise, it is the valid index into the swap table. */
 void 
 add_entry(void *vaddr, struct file *f, int swap_slot) {
-	stuct spt_entry *spte = malloc(sizeof(struct spt_entry));
-	spte->file = file_;
-	spte->page_num = pg_no(page);
+	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
+	spte->file = f;
+	spte->page_num = pg_no(vaddr);
 	spte->swap_slot = swap_slot;
 
 	hash_insert (&sup_page_table, &spte->hash_elem);
@@ -48,13 +46,13 @@ add_entry(void *vaddr, struct file *f, int swap_slot) {
 /* Returns the supplemental page table entry containing the given
    virtual address, or a null pointer if no such entry exists. */
 struct spt_entry *
-get_entry(void *vaddr) { 	
+get_entry(const void *vaddr) { 	
   struct spt_entry spte;
   struct hash_elem *e;
 
-  spte.addr = vaddr;
+  spte.page_num = pg_no(vaddr);
   e = hash_find (&sup_page_table, &spte.hash_elem);
-  return e != NULL ? hash_entry (e, struct spte, hash_elem) : NULL;
+  return e != NULL ? hash_entry (e, struct spt_entry, hash_elem) : NULL;
 }
 
 

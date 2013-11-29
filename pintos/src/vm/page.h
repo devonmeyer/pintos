@@ -24,7 +24,7 @@ void init_spt(void);
 unsigned spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED);
 bool spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
 void add_entry(void *vaddr, struct file *f, int swap_slot);
-struct spt_entry* get_entry(void *vaddr);
+struct spt_entry* get_entry(const void *vaddr);
 
 
 #endif /* PAGE.H */
