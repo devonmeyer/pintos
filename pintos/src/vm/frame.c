@@ -12,10 +12,10 @@ void
 add_entry_ft (void * frame, void * page){
 	struct ft_entry *entry = malloc(sizeof(struct ft_entry));
 	lock_acquire(&ft_lock);
-	ft_entry->frame_number = frame;
-	ft_entry->page_number = page;
-	ft_entry->t = thread_current();
-	list_push_back(&ft_list, &ft_entry->elem);
+	entry->frame_number = frame;
+	entry->page_number = page;
+	entry->t = thread_current();
+	list_push_back(&ft_list, &entry->elem);
 	lock_release(&ft_lock);
 }
 
@@ -27,7 +27,7 @@ remove_entry_ft (void * frame){
 	for (e = list_begin (&ft_list); e != list_end (&ft_list); e = list_next (e)) {
 	  	struct ft_entry *entry = list_entry (e, struct ft_entry, elem);
 	  	if(entry->frame_number == frame){
-	  		list_remove(&ft_list->elem);
+	  		list_remove(&entry->elem); //used to be (&ft_list->elem)
 	  		break;
 	  	}
   	}

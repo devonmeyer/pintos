@@ -1,3 +1,6 @@
+#ifndef FRAME_H_
+#define FRAME_H_
+
 #include "threads/thread.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
@@ -20,3 +23,5 @@ void add_entry_ft ( void * frame, void * page );
 void remove_entry_ft ( void * frame );
 void * get_frame_to_evict ( void );
 void reclaim_frames ( void );
+
+#endif
