@@ -22,10 +22,11 @@ add_entry_ft (void * frame, void * page){
 void
 remove_entry_ft (void * frame){
 	struct list_elem *e;
+	struct ft_entry *entry;
 	lock_acquire(&ft_lock);
 
 	for (e = list_begin (&ft_list); e != list_end (&ft_list); e = list_next (e)) {
-	  	struct ft_entry *entry = list_entry (e, struct ft_entry, elem);
+	  	entry = list_entry (e, struct ft_entry, elem);
 	  	if(entry->frame_number == frame){
 	  		list_remove(&entry->elem); //used to be (&ft_list->elem)
 	  		break;
@@ -84,11 +85,11 @@ void
 reclaim_frames(void){
 	struct list_elem *e;
 	lock_acquire(&ft_lock);
-	ct = thread_current();
+	struct thread * ct = thread_current();
 	for (e = list_begin (&ft_list); e != list_end (&ft_list); e = list_next (e)) {
 	  	struct ft_entry *entry = list_entry (e, struct ft_entry, elem);
 	  	if(entry->t == ct){
-	  		list_remove(&ft_list->elem);
+	  		list_remove(&entry->elem);
   		  	free(entry);
 	  	}
   	}
