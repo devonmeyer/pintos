@@ -1,6 +1,9 @@
 #ifndef VM_PAGE_H_
 #define VM_PAGE_H_
 
+#include <hash.h>
+#include <list.h>
+
 struct spt_entry {
 	struct hash_elem hash_elem; /* Hash table element. */
 	void *page_num; /* The virtual page number, acts as the key for the hash table. */

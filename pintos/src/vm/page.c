@@ -1,4 +1,3 @@
-#include <hash.h>
 #include "vm/page.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
@@ -165,8 +164,8 @@ swap_page_in_spt (const void *page_num) {
 
 /* Returns a list of all of the sector numbers of the pages that are swapped out for
    this supplemental page table. */
-struct list*
-get_all_swapped_out_page_nums_spt (void) {
+struct list *
+get_all_swapped_out_sector_nums_spt (void) {
   struct list *swapped_out_sectors;
   list_init (swapped_out_sectors);
 
@@ -186,10 +185,3 @@ get_all_swapped_out_page_nums_spt (void) {
 
   return swapped_out_sectors;
 }
-
-
-
-
-
-
-
