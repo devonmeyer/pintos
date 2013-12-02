@@ -167,10 +167,8 @@ thread_tick (void)
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
-#ifdef USERPROG
   else if (t->pagedir != NULL)
     user_ticks++;
-#endif
   else
     kernel_ticks++;
 
@@ -332,9 +330,7 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
 
-#ifdef USERPROG
   process_exit ();
-#endif
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
@@ -596,7 +592,6 @@ init_thread (struct thread *t, const char *name, int priority)
   struct fd_info * fd_array[18];
 
 
-#ifdef USERPROG
   /*
   int i;
   struct fd_info * fdi = malloc(sizeof(struct fd_info));
@@ -613,7 +608,6 @@ init_thread (struct thread *t, const char *name, int priority)
     t->fd_array[i] = NULL;
   }
 
-#endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -746,10 +740,8 @@ thread_schedule_tail (struct thread *prev)
   /* Start new time slice. */
   thread_ticks = 0;
 
-#ifdef USERPROG
   /* Activate the new address space. */
   process_activate ();
-#endif
 
   /* If the thread we switched from is dying, destroy its struct
      thread.  This must happen late so that thread_exit() doesn't

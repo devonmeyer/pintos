@@ -1,4 +1,4 @@
-#include "vm/page.h"
+#include "page.h"
 
 
 /* Initialize the supplemental page table. */

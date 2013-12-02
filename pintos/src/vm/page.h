@@ -8,7 +8,7 @@
 #include "lib/kernel/hash.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
-#include "vm/frame.h"
+#include "frame.h"
 #include "userprog/process.h"
 
 
