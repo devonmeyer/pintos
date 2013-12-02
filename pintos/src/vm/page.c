@@ -167,8 +167,8 @@ swap_page_in_spt (const void *page_num) {
    this supplemental page table. */
 struct list*
 get_all_swapped_out_page_nums_spt (void) {
-  struct list *swapped_out_page_nums;
-  list_init (swapped_out_page_nums);
+  struct list *swapped_out_sectors;
+  list_init (swapped_out_sectors);
 
   struct hash_iterator i;
 
@@ -178,13 +178,13 @@ get_all_swapped_out_page_nums_spt (void) {
   {
     struct spt_entry *spte = hash_entry (hash_cur (&i), struct spt_entry, hash_elem);
     if (spte->in_swap == true) {
-      struct page_num_item pni;
-      pni.sector_num = spte->sector_num;
-      list_push_back (swapped_out_page_nums, &pni.elem);
+      struct sector_item si;
+      si.sector_num = spte->sector_num;
+      list_push_back (swapped_out_sectors, &si.elem);
     }
   }
 
-  return swapped_out_page_nums;
+  return swapped_out_sectors;
 }
 
 

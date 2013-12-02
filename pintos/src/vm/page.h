@@ -11,7 +11,7 @@ struct spt_entry {
 	bool mem_mapped_io;
 };
 
-struct page_num_item {
+struct sector_item {
 	struct list_elem elem; /* List element. */
 	int sector_num; /* The sector number. */
 };
