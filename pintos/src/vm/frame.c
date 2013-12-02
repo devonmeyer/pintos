@@ -40,6 +40,22 @@ remove_entry_ft (void * frame){
   	free(entry);
 }
 
+void *
+get_entry_ft (void * frame){
+	struct list_elem *e;
+	struct ft_entry *entry;
+	lock_acquire(&ft_lock);
+
+	for (e = list_begin (&ft_list); e != list_end (&ft_list); e = list_next (e)) {
+	  	entry = list_entry (e, struct ft_entry, elem);
+	  	if(entry->frame_number == frame){
+	  		lock_release(&ft_lock);
+	  		return entry->page_number;
+	  	}
+  	}
+  	lock_release(&ft_lock);
+  	return NULL;
+}
 
 
 void *
