@@ -24,7 +24,7 @@ swap_frame_out_st(void* frame_number)
 	entry->sector = sector;
 
 	void* page_number = get_entry_ft(frame_number);
-   	swap_page_out_spt(entry->thread->sup_page_table, page_number, sector);
+   	swap_page_out_spt(page_number, sector);
 
    	int i;
    	for(i = 0; i < SECTORS_PER_PAGE; i++) {
@@ -51,12 +51,12 @@ free_all_swap_slots(struct thread* thread)
 {
 	lock_acquire(&st_lock);
 
-	// struct list 
+	struct list sectors_list = get_all_swapped_out_sector_nums_spt();
 
 	// struct list_elem *e;
-	// for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
- //    {
- //      struct thread *t_exists = list_entry (e, struct thread, allelem);
+	// for (e = list_begin (&sectors_list); e != list_end (&sectors_list); e = list_next (e))
+	// {
+ //      struct page_num_item = list_entry (e, struct page_num_item, elem);
  //      if(t_exists->tid == t->tid){
  //        return true;
  //      }      
