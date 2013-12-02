@@ -18,8 +18,8 @@ static bool spt_entry_less (const struct hash_elem *a_, const struct hash_elem *
 
 /* Initialize the supplemental page table. */
 void
-init_spt (void) {
-	hash_init (thread_current()->sup_page_table, spt_entry_hash, spt_entry_less, NULL);
+init_spt (struct thread * t) {
+	hash_init (t->sup_page_table, spt_entry_hash, spt_entry_less, NULL);
 }
 
 

@@ -13,6 +13,7 @@
 #include "threads/pte.h"
 #include "threads/thread.h"
 #include "userprog/process.h"
+#include "vm/page.h"
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -238,6 +239,8 @@ thread_create (const char *name, int priority,
 
   t->parent = thread_current();
   set_child_of_thread(t->tid);
+
+  init_spt(t); /* Initialize the Supplemental Page Table. */
 
 
   /* Add to run queue. */
@@ -590,6 +593,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = NULL;
   struct fd_info * fd_array[18];
 
+ 
 
   /*
   int i;
