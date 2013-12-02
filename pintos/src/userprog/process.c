@@ -20,8 +20,8 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
-#include "vm/frame.h"
-#include "vm/page.h"
+//#include "vm/frame.h"
+//#include "vm/page.h"
 
 #define MAX_ARGS 25
 
@@ -200,7 +200,7 @@ start_process (void *file_name_)
   if (!success) 
     thread_exit ();
 
-  init_sup_page_table (); // Initialize this process's Supplemental Page Table
+  //init_sup_page_table (); // Initialize this process's Supplemental Page Table
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -646,18 +646,18 @@ install_page (void *upage, void *kpage, bool writable)
 
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
-  bool valid =  (pagedir_get_page (t->pagedir, upage) == NULL
+  return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 
-  if (valid) {
+  //if (valid) {
     // Frame Table:
     // Take only the upper 20 bits (the frame #, the page #)
     // pg_no: returns only the upper 20 bits
     // vtop: Kernel VA -> Kernel PA
-    add_entry_ft(vtop(pg_no(kpage)),pg_no(upage)); 
-  }
+    //add_entry_ft(vtop(pg_no(kpage)),pg_no(upage)); 
+  //}
 
-  return valid;
+  //return valid;
 }
 
 /* 
