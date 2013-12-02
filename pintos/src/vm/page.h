@@ -21,7 +21,7 @@ bool create_entry_spt(struct hash *sup_page_table, void *vaddr);
 void add_entry_spt(struct hash *sup_page_table, void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io);
 struct spt_entry* get_entry_spt(struct hash *sup_page_table, const void *vaddr);
 bool page_is_in_swap_spt (struct hash *sup_page_table, const void *vaddr);
-swap_page_out_spt (struct hash *sup_page_table, const void *vaddr, int sector_num);
+bool swap_page_out_spt (struct hash *sup_page_table, const void *vaddr, int sector_num);
 bool swap_page_in_spt (struct hash *sup_page_table, const void *vaddr);
 struct list get_all_swapped_out_page_nums_spt (struct hash *sup_page_table);
 

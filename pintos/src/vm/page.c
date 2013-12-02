@@ -1,13 +1,12 @@
+#include <hash.h>
 #include "vm/page.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "userprog/pagedir.h"
-#include "lib/kernel/hash.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
-#include "vm/page.h"
 #include "vm/frame.h"
 
 
