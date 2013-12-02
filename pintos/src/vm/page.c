@@ -112,22 +112,23 @@ get_entry_spt(struct hash *sup_page_table, const void *vaddr) {
 /* Returns TRUE if the page at the given virtual address is stored in
    the swap partition. */
 bool 
-page_is_in_swap (struct hash *sup_page_table,const void *vaddr) {
+page_is_in_swap_spt (struct hash *sup_page_table,const void *vaddr) {
   return get_entry_spt (sup_page_table, vaddr)->in_swap;
 }
 
 
 /* Notifies the supplemental page table that the page at virtual address VADDR
-   is getting swapped out, that is, stored to the swap partition. Returns TRUE
-   if the page lookup was successful (if the page was in the supplemental page
-   table) and FALSE otherwise. */
+   is getting swapped out, that is, stored to the swap partition. The SECTOR_NUM
+   marks the beginning of the swap slot. Returns TRUE if the page lookup was successful
+  (if the page was in the supplemental page table) and FALSE otherwise. */
 bool
-swap_page_out (struct hash *sup_page_table, const void *vaddr) {
+swap_page_out_spt (struct hash *sup_page_table, const void *vaddr, int sector_num) {
   struct spt_entry *spte = get_entry_spt (sup_page_table, vaddr);
   if (spte == NULL) {
     return false;
   } else {
     spte->in_swap = false;
+    spte->sector_num = sector_num;
     return true;
   }
 }
@@ -137,12 +138,13 @@ swap_page_out (struct hash *sup_page_table, const void *vaddr) {
    Returns TRUE if the page lookup was successful (if the page was in the 
    supplemental page table) and FALSE otherwise. */
 bool
-swap_page_in (struct hash *sup_page_table, const void *vaddr) {
+swap_page_in_spt (struct hash *sup_page_table, const void *vaddr) {
   struct spt_entry *spte = get_entry_spt (sup_page_table, vaddr);
   if (spte == NULL) {
     return false;
   } else {
     spte->in_swap = true;
+    spte->sector_num = -1;
     return true;
   }
 }
@@ -151,7 +153,7 @@ swap_page_in (struct hash *sup_page_table, const void *vaddr) {
 /* Returns a list of all of the page numbers of pages that are swapped out for
    this supplemental page table. */
 struct list 
-get_all_swapped_out_page_nums (struct hash *sup_page_table) {
+get_all_swapped_out_page_nums_spt (struct hash *sup_page_table) {
   struct list swapped_out_page_nums;
   list_init (&swapped_out_page_nums);
 
