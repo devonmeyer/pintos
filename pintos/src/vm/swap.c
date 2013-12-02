@@ -28,8 +28,8 @@ swap_frame_out_st(void* frame_number)
 
    	int i;
    	for(i = 0; i < SECTORS_PER_PAGE; i++) {
-   		block_write(swap_block, sector, frame_address);
-   		frame_address += BLOCK_SECTOR_SIZE;
+   		block_write(swap_block, sector, frame_number);
+   		frame_number += BLOCK_SECTOR_SIZE;
    		sector++;
    	}
 
@@ -53,14 +53,14 @@ free_all_swap_slots(struct thread* thread)
 
 	struct list sectors_list = get_all_swapped_out_sector_nums_spt();
 
-	// struct list_elem *e;
-	// for (e = list_begin (&sectors_list); e != list_end (&sectors_list); e = list_next (e))
-	// {
- //      struct page_num_item = list_entry (e, struct page_num_item, elem);
- //      if(t_exists->tid == t->tid){
- //        return true;
- //      }      
- //    }
+	struct list_elem *e;
+	for (e = list_begin (&sectors_list); e != list_end (&sectors_list); e = list_next (e))
+	{
+      struct page_num_item = list_entry (e, struct page_num_item, elem);
+      if(t_exists->tid == t->tid){
+        return true;
+      }      
+    }
 
 	lock_release(&st_lock);
 }
