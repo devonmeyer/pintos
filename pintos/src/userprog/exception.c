@@ -5,6 +5,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "userprog/syscall.h"
+#include "threads/vaddr.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -152,11 +153,41 @@ page_fault (struct intr_frame *f)
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
-  kill (f);
+
+  bool success = false;
+
+  if(not_present && is_user_vaddr(fault_addr)){
+    // At this point we believe that the fault is in error.
+    // We should figure out if the fault_addr exists in the supplemental page table
+    struct spt_entry * entry = get_entry(fault_addr); 
+    if (entry != NULL){
+      // Page exists in the supplemental page table.
+      // Must be a swap or memmap etc.
+      success = true;
+    } else if (f->esp - 32 <= fault_addr){
+      // We now know that the user needs to grow the stack
+
+      // Check to see if the user has grown the stack too much
+
+      // 8 MB will be our maximum size
+
+      if(!(PHYS_BASE - pg_round_down(fault_addr) > 67108864)){
+        // So the user wants to expand the stack
+        // And the user is allowed to.
+        success = true;
+        // Now call into the supplemental page table to create a new entry for the user's expanded stack.
+      }
+
+    }
+
+  }
+  if(!success){
+    printf ("Page fault at %p: %s error %s page in %s context.\n",
+            fault_addr,
+            not_present ? "not present" : "rights violation",
+            write ? "writing" : "reading",
+            user ? "user" : "kernel");
+    kill (f);
+  }
 }
 
