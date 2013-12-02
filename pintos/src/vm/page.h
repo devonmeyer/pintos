@@ -16,13 +16,14 @@ struct page_num_item {
 	int sector_num; /* The sector number. */
 };
 
-void init_spt (struct hash *sup_page_table);
-bool create_entry_spt(struct hash *sup_page_table, void *vaddr);
-void add_entry_spt(struct hash *sup_page_table, void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io);
-struct spt_entry* get_entry_spt(struct hash *sup_page_table, const void *vaddr);
-bool page_is_in_swap_spt (struct hash *sup_page_table, const void *vaddr);
-bool swap_page_out_spt (struct hash *sup_page_table, const void *vaddr, int sector_num);
-bool swap_page_in_spt (struct hash *sup_page_table, const void *vaddr);
-struct list get_all_swapped_out_sector_nums_spt (struct hash *sup_page_table);
+void init_spt (void);
+bool create_entry_spt(void *vaddr);
+void add_entry_spt(void *page_num, struct file *f, bool in_swap, bool mem_mapped_io);
+struct spt_entry* get_entry_spt(const void *page_num);
+bool page_is_in_swap_spt (const void *page_num);
+bool swap_page_out_spt (const void *page_num, int sector_num);
+bool swap_page_in_spt (const void *page_num);
+struct list get_all_swapped_out_sector_nums_spt (void);
+struct spt_entry *get_entry_from_vaddr_spt(const void *vaddr);
 
 #endif /* PAGE.H */
