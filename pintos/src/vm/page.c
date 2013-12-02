@@ -1,4 +1,4 @@
-#include "page.h"
+#include "vm/page.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
@@ -9,15 +9,21 @@
 #include "vm/frame.h"
 #include "userprog/process.h"
 
+// Static method declarations:
+static unsigned spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED);
+static bool spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
+
+
+
 /* Initialize the supplemental page table. */
 void
-init_sup_page_table (struct hash *sup_page_table) {
+init_spt (struct hash *sup_page_table) {
 	hash_init (sup_page_table, spt_entry_hash, spt_entry_less, NULL);
 }
 
 
 /* Returns a hash value for supplemental page table entry spte. */
-unsigned
+static unsigned
 spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED)
 {
   const struct spt_entry *spte = hash_entry (spte_, struct spt_entry, hash_elem);
@@ -26,7 +32,7 @@ spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED)
 
 
 /* Returns true if supplemental page table entry a precedes supplemental page table entry b. */
-bool
+static bool
 spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux UNUSED)
 {

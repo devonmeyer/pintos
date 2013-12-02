@@ -16,9 +16,7 @@ struct page_num_item {
 	void *page_num; /* The virtual page number. */
 };
 
-void init_sup_page_table (struct hash *sup_page_table);
-unsigned spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED);
-bool spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
+void init_spt (struct hash *sup_page_table);
 bool create_entry_spt(struct hash *sup_page_table, void *vaddr);
 void add_entry_spt(struct hash *sup_page_table, void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io);
 struct spt_entry* get_entry_spt(struct hash *sup_page_table, const void *vaddr);

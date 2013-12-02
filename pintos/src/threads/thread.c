@@ -589,9 +589,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->donated_priorities);
   list_init (&t->children);
 
-  //init_sup_page_table (thread_current()->sup_page_table); // Initialize this process's Supplemental Page Table
-  initalize_ft();
-  
+  init_spt (thread_current()->sup_page_table); // Initialize this process's Supplemental Page Table
+
   t->parent = NULL;
   struct fd_info * fd_array[18];
 
