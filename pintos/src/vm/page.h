@@ -1,6 +1,5 @@
-#ifndef PAGE_H_
-#define PAGE_H_
-
+#ifndef VM_PAGE_H_
+#define VM_PAGE_H_
 
 struct spt_entry {
 	struct hash_elem hash_elem; /* Hash table element. */

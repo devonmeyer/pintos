@@ -1,4 +1,3 @@
-#include "page.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
@@ -6,8 +5,10 @@
 #include "lib/kernel/hash.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
-#include "vm/frame.h"
 #include "userprog/process.h"
+#include "vm/page.h"
+#include "vm/frame.h"
+
 
 /* Initialize the supplemental page table. */
 void

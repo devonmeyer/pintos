@@ -1,4 +1,3 @@
-#include "threads/thread.h"
 #include <debug.h>
 #include <stddef.h>
 #include <random.h>
@@ -12,6 +11,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "threads/pte.h"
+#include "threads/thread.h"
 #include "userprog/process.h"
 #include "vm/frame.h"
 
@@ -590,7 +590,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->children);
 
   //init_sup_page_table (thread_current()->sup_page_table); // Initialize this process's Supplemental Page Table
-  initalize_ft();
+  //initialize_ft();
   
   t->parent = NULL;
   struct fd_info * fd_array[18];

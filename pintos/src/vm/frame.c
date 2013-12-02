@@ -1,5 +1,10 @@
+#include "threads/thread.h"
+#include "threads/synch.h"
+#include "threads/malloc.h"
+#include "userprog/pagedir.h"
 #include "vm/frame.h"
 #include "vm/page.h"
+
 void
 initialize_ft (void){
 	lock_init(&ft_lock);
