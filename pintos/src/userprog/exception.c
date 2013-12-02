@@ -6,6 +6,7 @@
 #include "threads/thread.h"
 #include "userprog/syscall.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -159,7 +160,7 @@ page_fault (struct intr_frame *f)
   if(not_present && is_user_vaddr(fault_addr)){
     // At this point we believe that the fault is in error.
     // We should figure out if the fault_addr exists in the supplemental page table
-    struct spt_entry * entry = get_entry(fault_addr); 
+    struct spt_entry * entry = get_entry_spt(fault_addr); 
     if (entry != NULL){
       // Page exists in the supplemental page table.
       // Must be a swap or memmap etc.
@@ -171,11 +172,12 @@ page_fault (struct intr_frame *f)
 
       // 8 MB will be our maximum size
 
-      if(!(PHYS_BASE - pg_round_down(fault_addr) > 67108864)){
+      if((PHYS_BASE - pg_round_down(fault_addr)) <= 67108864){
         // So the user wants to expand the stack
         // And the user is allowed to.
-        success = true;
+        
         // Now call into the supplemental page table to create a new entry for the user's expanded stack.
+        success = create_entry_spt(fault_addr);
       }
 
     }

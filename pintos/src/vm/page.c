@@ -31,7 +31,7 @@ spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 /* Add an entry to the supplemental page table. */
 void 
-add_entry(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
+add_entry_spt(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
 	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
 	spte->file = f;
 	spte->page_num = pg_no(vaddr);
@@ -44,7 +44,7 @@ add_entry(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
 /* Create a new entry and add it to the supplemental page table.
    Returns TRUE if operation succeeds, FALSE otherwise. */
 bool 
-create_entry(void *vaddr) {
+create_entry_spt(void *vaddr) {
   struct spt_entry *spte = malloc(sizeof(struct spt_entry));
   
   uint32_t *kpage;
@@ -69,7 +69,7 @@ create_entry(void *vaddr) {
     spte->in_swap = false;
     spte->mem_mapped_io = false;
 
-    // (4) Add the frame to page mapping to the Frame Table
+    // (4) Add the frame-to-page mapping to the Frame Table
     add_entry_ft (spte->frame_num, spte->page_num);
 
     // hash_insert returns a null pointer if no element equal to element previously existed in it
@@ -83,7 +83,7 @@ create_entry(void *vaddr) {
 /* Returns the supplemental page table entry containing the given
    virtual address, or a null pointer if no such entry exists. */
 struct spt_entry *
-get_entry(const void *vaddr) { 	
+get_entry_spt(const void *vaddr) { 	
   struct spt_entry spte;
   struct hash_elem *e;
 
@@ -97,7 +97,7 @@ get_entry(const void *vaddr) {
    the swap partition. */
 bool 
 page_is_in_swap (const void *vaddr) {
-  return get_entry (vaddr)->in_swap;
+  return get_entry_spt (vaddr)->in_swap;
 }
 
 
@@ -107,7 +107,7 @@ page_is_in_swap (const void *vaddr) {
    table) and FALSE otherwise. */
 bool
 swap_page_out (const void *vaddr) {
-  struct spt_entry *spte = get_entry (vaddr);
+  struct spt_entry *spte = get_entry_spt (vaddr);
   if (spte == NULL) {
     return false;
   } else {
@@ -122,7 +122,7 @@ swap_page_out (const void *vaddr) {
    supplemental page table) and FALSE otherwise. */
 bool
 swap_page_in (const void *vaddr) {
-  struct spt_entry *spte = get_entry (vaddr);
+  struct spt_entry *spte = get_entry_spt (vaddr);
   if (spte == NULL) {
     return false;
   } else {
