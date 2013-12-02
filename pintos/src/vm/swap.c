@@ -51,16 +51,16 @@ free_all_swap_slots(struct thread* thread)
 {
 	lock_acquire(&st_lock);
 
-	struct list sectors_list = get_all_swapped_out_sector_nums_spt();
+	// struct list* sectors_list = get_all_swapped_out_sector_nums_spt();
 
-	struct list_elem *e;
-	for (e = list_begin (&sectors_list); e != list_end (&sectors_list); e = list_next (e))
-	{
-      struct page_num_item = list_entry (e, struct page_num_item, elem);
-      if(t_exists->tid == t->tid){
-        return true;
-      }      
-    }
+	// struct list_elem *e;
+	// for (e = list_begin (&sectors_list); e != list_end (&sectors_list); e = list_next (e))
+	// {
+ //      struct page_num_item = list_entry (e, struct page_num_item, elem);
+ //      if(t_exists->tid == t->tid){
+ //        return true;
+ //      }      
+ //    }
 
 	lock_release(&st_lock);
 }
