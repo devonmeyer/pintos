@@ -23,7 +23,7 @@ struct spt_entry* get_entry_spt(const void *page_num);
 bool page_is_in_swap_spt (const void *page_num);
 bool swap_page_out_spt (const void *page_num, int sector_num);
 bool swap_page_in_spt (const void *page_num);
-struct list get_all_swapped_out_sector_nums_spt (void);
+struct list *get_all_swapped_out_sector_nums_spt (void);
 struct spt_entry *get_entry_from_vaddr_spt(const void *vaddr);
 
 #endif /* PAGE.H */
