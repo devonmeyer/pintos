@@ -2,7 +2,6 @@
 #define USERPROG_PROCESS_H
 
 #include "threads/thread.h"
-#include "vm/page.h"
 
 tid_t process_execute (const char *cmdline);
 int process_wait (tid_t);
