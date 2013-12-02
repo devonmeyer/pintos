@@ -1,6 +1,8 @@
 #ifndef VM_PAGE_H_
 #define VM_PAGE_H_
 
+#include "threads/thread.h"
+
 struct spt_entry {
 	struct hash_elem hash_elem; /* Hash table element. */
 	void *page_num; /* The virtual page number, acts as the key for the hash table. */
@@ -16,7 +18,7 @@ struct page_num_item {
 	int sector_num; /* The sector number. */
 };
 
-void init_spt (void);
+void init_spt (struct thread * t);
 bool create_entry_spt(void *vaddr);
 void add_entry_spt(void *page_num, struct file *f, bool in_swap, bool mem_mapped_io);
 struct spt_entry* get_entry_spt(const void *page_num);

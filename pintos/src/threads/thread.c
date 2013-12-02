@@ -240,6 +240,8 @@ thread_create (const char *name, int priority,
   t->parent = thread_current();
   set_child_of_thread(t->tid);
 
+  init_spt(t); /* Initialize the Supplemental Page Table. */
+
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -591,7 +593,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = NULL;
   struct fd_info * fd_array[18];
 
-  init_spt(); /* Initialize the Supplemental Page Table. */
+ 
 
   /*
   int i;

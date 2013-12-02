@@ -6,7 +6,7 @@
 #include "threads/thread.h"
 #include "userprog/syscall.h"
 #include "threads/vaddr.h"
-//#include "vm/page.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -156,16 +156,20 @@ page_fault (struct intr_frame *f)
      which fault_addr refers. */
 
   bool success = false;
-
-  /*if(not_present && is_user_vaddr(fault_addr)){
+  printf("Got to 1\n");
+  if(not_present && is_user_vaddr(fault_addr)){
+    printf("Got to 2\n");
     // At this point we believe that the fault is in error.
     // We should figure out if the fault_addr exists in the supplemental page table
     struct spt_entry * entry = get_entry_spt(fault_addr); 
+    printf("Got to 3\n");
     if (entry != NULL){
+      printf("Got to 4\n");
       // Page exists in the supplemental page table.
       // Must be a swap or memmap etc.
       success = true;
     } else if (f->esp - 32 <= fault_addr){
+      printf("Got to 5\n");
       // We now know that the user needs to grow the stack
 
       // Check to see if the user has grown the stack too much
@@ -173,6 +177,7 @@ page_fault (struct intr_frame *f)
       // 8 MB will be our maximum size
 
       if((PHYS_BASE - pg_round_down(fault_addr)) <= 67108864){
+        printf("Got to 6\n");
         // So the user wants to expand the stack
         // And the user is allowed to.
         
@@ -181,9 +186,10 @@ page_fault (struct intr_frame *f)
       }
 
     }
-
-  }*/
+  }
+  printf("Got to 7\n");
   if(!success){
+    printf("Got to 8\n");
     printf ("Page fault at %p: %s error %s page in %s context.\n",
             fault_addr,
             not_present ? "not present" : "rights violation",
