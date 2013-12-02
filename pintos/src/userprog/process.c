@@ -20,8 +20,8 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
-//#include "vm/frame.h"
-//#include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/page.h"
 
 #define MAX_ARGS 25
 
@@ -199,8 +199,6 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
-
-  //init_sup_page_table (); // Initialize this process's Supplemental Page Table
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

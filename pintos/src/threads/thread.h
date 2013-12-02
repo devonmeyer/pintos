@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 #include "../devices/timer.h"
 
 
@@ -115,6 +116,8 @@ struct thread
     struct thread * parent;
 
     struct list children;
+
+    struct hash *sup_page_table;        /* The Supplemental Page Table associated with this thread if it is a user process. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

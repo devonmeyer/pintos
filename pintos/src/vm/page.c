@@ -1,5 +1,13 @@
 #include "page.h"
-
+#include "threads/synch.h"
+#include "threads/malloc.h"
+#include "threads/palloc.h"
+#include "userprog/pagedir.h"
+#include "lib/kernel/hash.h"
+#include "filesys/file.h"
+#include "threads/vaddr.h"
+#include "vm/frame.h"
+#include "userprog/process.h"
 
 /* Initialize the supplemental page table. */
 void
@@ -96,8 +104,8 @@ get_entry_spt(struct hash *sup_page_table, const void *vaddr) {
 /* Returns TRUE if the page at the given virtual address is stored in
    the swap partition. */
 bool 
-page_is_in_swap (const void *vaddr) {
-  return get_entry_spt (vaddr)->in_swap;
+page_is_in_swap (struct hash *sup_page_table,const void *vaddr) {
+  return get_entry_spt (sup_page_table, vaddr)->in_swap;
 }
 
 
@@ -106,8 +114,8 @@ page_is_in_swap (const void *vaddr) {
    if the page lookup was successful (if the page was in the supplemental page
    table) and FALSE otherwise. */
 bool
-swap_page_out (const void *vaddr) {
-  struct spt_entry *spte = get_entry_spt (vaddr);
+swap_page_out (struct hash *sup_page_table, const void *vaddr) {
+  struct spt_entry *spte = get_entry_spt (sup_page_table, vaddr);
   if (spte == NULL) {
     return false;
   } else {
@@ -121,8 +129,8 @@ swap_page_out (const void *vaddr) {
    Returns TRUE if the page lookup was successful (if the page was in the 
    supplemental page table) and FALSE otherwise. */
 bool
-swap_page_in (const void *vaddr) {
-  struct spt_entry *spte = get_entry_spt (vaddr);
+swap_page_in (struct hash *sup_page_table, const void *vaddr) {
+  struct spt_entry *spte = get_entry_spt (sup_page_table, vaddr);
   if (spte == NULL) {
     return false;
   } else {
