@@ -1,24 +1,30 @@
+#include <hash.h>
+#include "vm/page.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "userprog/pagedir.h"
-#include "lib/kernel/hash.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
 #include "userprog/process.h"
-#include "vm/page.h"
 #include "vm/frame.h"
+
+
+// Static method declarations:
+static unsigned spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED);
+static bool spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
+
 
 
 /* Initialize the supplemental page table. */
 void
-init_sup_page_table (struct hash *sup_page_table) {
+init_spt (struct hash *sup_page_table) {
 	hash_init (sup_page_table, spt_entry_hash, spt_entry_less, NULL);
 }
 
 
 /* Returns a hash value for supplemental page table entry spte. */
-unsigned
+static unsigned
 spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED)
 {
   const struct spt_entry *spte = hash_entry (spte_, struct spt_entry, hash_elem);
@@ -27,7 +33,7 @@ spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED)
 
 
 /* Returns true if supplemental page table entry a precedes supplemental page table entry b. */
-bool
+static bool
 spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
            void *aux UNUSED)
 {
@@ -105,22 +111,23 @@ get_entry_spt(struct hash *sup_page_table, const void *vaddr) {
 /* Returns TRUE if the page at the given virtual address is stored in
    the swap partition. */
 bool 
-page_is_in_swap (struct hash *sup_page_table,const void *vaddr) {
+page_is_in_swap_spt (struct hash *sup_page_table,const void *vaddr) {
   return get_entry_spt (sup_page_table, vaddr)->in_swap;
 }
 
 
 /* Notifies the supplemental page table that the page at virtual address VADDR
-   is getting swapped out, that is, stored to the swap partition. Returns TRUE
-   if the page lookup was successful (if the page was in the supplemental page
-   table) and FALSE otherwise. */
+   is getting swapped out, that is, stored to the swap partition. The SECTOR_NUM
+   marks the beginning of the swap slot. Returns TRUE if the page lookup was successful
+  (if the page was in the supplemental page table) and FALSE otherwise. */
 bool
-swap_page_out (struct hash *sup_page_table, const void *vaddr) {
+swap_page_out_spt (struct hash *sup_page_table, const void *vaddr, int sector_num) {
   struct spt_entry *spte = get_entry_spt (sup_page_table, vaddr);
   if (spte == NULL) {
     return false;
   } else {
     spte->in_swap = false;
+    spte->sector_num = sector_num;
     return true;
   }
 }
@@ -130,12 +137,13 @@ swap_page_out (struct hash *sup_page_table, const void *vaddr) {
    Returns TRUE if the page lookup was successful (if the page was in the 
    supplemental page table) and FALSE otherwise. */
 bool
-swap_page_in (struct hash *sup_page_table, const void *vaddr) {
+swap_page_in_spt (struct hash *sup_page_table, const void *vaddr) {
   struct spt_entry *spte = get_entry_spt (sup_page_table, vaddr);
   if (spte == NULL) {
     return false;
   } else {
     spte->in_swap = true;
+    spte->sector_num = -1;
     return true;
   }
 }
@@ -144,7 +152,7 @@ swap_page_in (struct hash *sup_page_table, const void *vaddr) {
 /* Returns a list of all of the page numbers of pages that are swapped out for
    this supplemental page table. */
 struct list 
-get_all_swapped_out_page_nums (struct hash *sup_page_table) {
+get_all_swapped_out_page_nums_spt (struct hash *sup_page_table) {
   struct list swapped_out_page_nums;
   list_init (&swapped_out_page_nums);
 
