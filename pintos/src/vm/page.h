@@ -13,7 +13,7 @@ struct spt_entry {
 
 struct page_num_item {
 	struct list_elem elem; /* List element. */
-	void *page_num; /* The virtual page number. */
+	int sector_num; /* The sector number. */
 };
 
 void init_spt (struct hash *sup_page_table);
@@ -23,6 +23,6 @@ struct spt_entry* get_entry_spt(struct hash *sup_page_table, const void *vaddr);
 bool page_is_in_swap_spt (struct hash *sup_page_table, const void *vaddr);
 bool swap_page_out_spt (struct hash *sup_page_table, const void *vaddr, int sector_num);
 bool swap_page_in_spt (struct hash *sup_page_table, const void *vaddr);
-struct list get_all_swapped_out_page_nums_spt (struct hash *sup_page_table);
+struct list get_all_swapped_out_sector_nums_spt (struct hash *sup_page_table);
 
 #endif /* PAGE.H */
