@@ -149,7 +149,7 @@ swap_page_in_spt (struct hash *sup_page_table, const void *vaddr) {
 }
 
 
-/* Returns a list of all of the page numbers of pages that are swapped out for
+/* Returns a list of all of the sector numbers of the pages that are swapped out for
    this supplemental page table. */
 struct list 
 get_all_swapped_out_page_nums_spt (struct hash *sup_page_table) {
@@ -165,7 +165,7 @@ get_all_swapped_out_page_nums_spt (struct hash *sup_page_table) {
     struct spt_entry *spte = hash_entry (hash_cur (&i), struct spt_entry, hash_elem);
     if (spte->in_swap == true) {
       struct page_num_item pni;
-      pni.page_num = spte->page_num;
+      pni.sector_num = spte->sector_num;
       list_push_back (&swapped_out_page_nums, &pni.elem);
     }
   }
