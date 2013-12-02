@@ -4,10 +4,12 @@
 #include "threads/thread.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
+#include "threads/palloc.h"
 #include "userprog/pagedir.h"
 #include "lib/kernel/hash.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
+#include "vm/frame.h"
 
 
 struct hash sup_page_table;
@@ -15,6 +17,7 @@ struct hash sup_page_table;
 struct spt_entry {
 	struct hash_elem hash_elem; /* Hash table element. */
 	void *page_num; /* The virtual page number, acts as the key for the hash table. */
+	void *frame_num; /* The physical frame number. */
 	struct file * file;
 	bool in_swap;
 	bool mem_mapped_io;

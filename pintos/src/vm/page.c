@@ -41,6 +41,44 @@ add_entry(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
 	hash_insert (&sup_page_table, &spte->hash_elem);
 }
 
+/* Create a new entry and add it to the supplemental page table.
+   Returns TRUE if operation succeeds, FALSE otherwise. */
+bool 
+create_entry(void *vaddr) {
+  struct spt_entry *spte = malloc(sizeof(struct spt_entry));
+  
+  uint32_t *kpage;
+  bool success = false;
+
+  // (1) Allocate the new frame
+  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  
+  if (kpage != NULL) {
+
+    // (2) Add the mapping for the new frame to the Hardware Page Table
+    success = install_page (vaddr, kpage, true); 
+    if (success == false) {
+      palloc_free_page (kpage);
+    }
+  }
+
+  if (success == true) {
+    // (3) Create the Supplemental Page Table entry
+    spte->page_num = pg_no (vaddr);
+    spte->frame_num = pg_no (kpage);
+    spte->in_swap = false;
+    spte->mem_mapped_io = false;
+
+    // (4) Add the frame to page mapping to the Frame Table
+    add_entry_ft (spte->frame_num, spte->page_num);
+
+    // hash_insert returns a null pointer if no element equal to element previously existed in it
+    return (hash_insert (&sup_page_table, &spte->hash_elem) == NULL); 
+  } else {
+    free(spte);
+    return false;
+  }
+}
 
 /* Returns the supplemental page table entry containing the given
    virtual address, or a null pointer if no such entry exists. */
