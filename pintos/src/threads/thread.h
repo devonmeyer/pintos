@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <hash.h>
 #include "../devices/timer.h"
+#include "vm/frame.h"
 
 
 /* States in a thread's life cycle. */

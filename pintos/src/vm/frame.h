@@ -1,11 +1,7 @@
-#ifndef FRAME_H_
-#define FRAME_H_
+#ifndef VM_FRAME_H_
+#define VM_FRAME_H_
 
-#include "threads/thread.h"
 #include "threads/synch.h"
-#include "threads/malloc.h"
-#include "userprog/pagedir.h"
-#include "vm/page.h"
 
 struct list ft_list;
 

@@ -6,8 +6,10 @@
 #include "lib/kernel/hash.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
-#include "vm/frame.h"
 #include "userprog/process.h"
+#include "vm/page.h"
+#include "vm/frame.h"
+
 
 // Static method declarations:
 static unsigned spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED);
