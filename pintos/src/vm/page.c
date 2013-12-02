@@ -3,8 +3,8 @@
 
 /* Initialize the supplemental page table. */
 void
-init_sup_page_table (void) {
-	hash_init (&sup_page_table, spt_entry_hash, spt_entry_less, NULL);
+init_sup_page_table (struct hash *sup_page_table) {
+	hash_init (sup_page_table, spt_entry_hash, spt_entry_less, NULL);
 }
 
 
@@ -31,20 +31,20 @@ spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
 
 /* Add an entry to the supplemental page table. */
 void 
-add_entry_spt(void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
+add_entry_spt(struct hash *sup_page_table, void *vaddr, struct file *f, bool in_swap, bool mem_mapped_io) {
 	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
 	spte->file = f;
 	spte->page_num = pg_no(vaddr);
   spte->in_swap = in_swap;
   spte->mem_mapped_io = mem_mapped_io;
 
-	hash_insert (&sup_page_table, &spte->hash_elem);
+	hash_insert (sup_page_table, &spte->hash_elem);
 }
 
 /* Create a new entry and add it to the supplemental page table.
    Returns TRUE if operation succeeds, FALSE otherwise. */
 bool 
-create_entry_spt(void *vaddr) {
+create_entry_spt(struct hash *sup_page_table, void *vaddr) {
   struct spt_entry *spte = malloc(sizeof(struct spt_entry));
   
   uint32_t *kpage;
@@ -73,7 +73,7 @@ create_entry_spt(void *vaddr) {
     add_entry_ft (spte->frame_num, spte->page_num);
 
     // hash_insert returns a null pointer if no element equal to element previously existed in it
-    return (hash_insert (&sup_page_table, &spte->hash_elem) == NULL); 
+    return (hash_insert (sup_page_table, &spte->hash_elem) == NULL); 
   } else {
     free(spte);
     return false;
@@ -83,12 +83,12 @@ create_entry_spt(void *vaddr) {
 /* Returns the supplemental page table entry containing the given
    virtual address, or a null pointer if no such entry exists. */
 struct spt_entry *
-get_entry_spt(const void *vaddr) { 	
+get_entry_spt(struct hash *sup_page_table, const void *vaddr) { 	
   struct spt_entry spte;
   struct hash_elem *e;
 
   spte.page_num = pg_no (vaddr);
-  e = hash_find (&sup_page_table, &spte.hash_elem);
+  e = hash_find (sup_page_table, &spte.hash_elem);
   return e != NULL ? hash_entry (e, struct spt_entry, hash_elem) : NULL;
 }
 
@@ -135,13 +135,13 @@ swap_page_in (const void *vaddr) {
 /* Returns a list of all of the page numbers of pages that are swapped out for
    this supplemental page table. */
 struct list 
-get_all_swapped_out_page_nums (void) {
+get_all_swapped_out_page_nums (struct hash *sup_page_table) {
   struct list swapped_out_page_nums;
   list_init (&swapped_out_page_nums);
 
   struct hash_iterator i;
 
-  hash_first (&i, &sup_page_table);
+  hash_first (&i, sup_page_table);
 
   while (hash_next (&i))
   {
