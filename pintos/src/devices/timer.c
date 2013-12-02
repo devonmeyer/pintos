@@ -179,9 +179,9 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();  
   enum intr_level old_level = intr_disable ();
   wake_up_sleeping_threads ();
-  if(ticks/RESET_ACCESSED_BITS_FREQ) {
+  /*if (ticks % RESET_ACCESSED_BITS_FREQ) {
     reset_all_accessed_bits();
-  }
+  }*/
   intr_set_level (old_level);
 }
 

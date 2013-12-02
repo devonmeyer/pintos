@@ -6,7 +6,7 @@
 #include "threads/thread.h"
 #include "userprog/syscall.h"
 #include "threads/vaddr.h"
-#include "vm/page.h"
+//#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -157,7 +157,7 @@ page_fault (struct intr_frame *f)
 
   bool success = false;
 
-  if(not_present && is_user_vaddr(fault_addr)){
+  /*if(not_present && is_user_vaddr(fault_addr)){
     // At this point we believe that the fault is in error.
     // We should figure out if the fault_addr exists in the supplemental page table
     struct spt_entry * entry = get_entry_spt(fault_addr); 
@@ -182,7 +182,7 @@ page_fault (struct intr_frame *f)
 
     }
 
-  }
+  }*/
   if(!success){
     printf ("Page fault at %p: %s error %s page in %s context.\n",
             fault_addr,
