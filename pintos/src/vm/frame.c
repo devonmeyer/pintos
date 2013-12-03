@@ -1,6 +1,8 @@
 #include "threads/thread.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
+#include "threads/palloc.h"
+#include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
 #include "vm/page.h"
@@ -11,6 +13,50 @@ initialize_ft (void){
 	list_init(&ft_list);
 }
 
+void *
+allocate_frame_ft (void * vaddr) {
+
+  // (1) Allocate the new frame
+  void * new_frame = palloc_get_page (PAL_USER | PAL_ZERO);
+  
+  while ( new_frame == NULL ){
+  	// Must perform an eviction
+  	void * evict = get_frame_to_evict();
+  	if (evict == NULL){
+  		// Could not get a frame to evict.
+  		return NULL;
+   	}
+
+  	if ( swap_frame_out_st ( evict ) ) {
+
+  		// Swap succeeded, continue
+
+  		remove_entry_ft ( evict );
+  		palloc_free_page ( evict );
+
+  	} else {
+
+  		// Swap didn't succeed.
+  		// Due to a kernel panic, we should never reach this.
+  		// But just in case, I fail gracefully! :D
+  		return NULL;
+
+  	}
+
+
+  }
+ 	add_entry_ft (new_frame, pg_no(vaddr));
+
+  	if (!install_page (vaddr, new_frame, true)) {
+
+    	palloc_free_page (new_frame);
+    	return NULL;
+
+  	}
+
+  	return new_frame;
+
+}
 
 void
 add_entry_ft (void * frame, void * page){
