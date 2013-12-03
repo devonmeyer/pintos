@@ -53,7 +53,7 @@ add_entry_spt(void *page_num, struct file *f, bool in_swap, bool mem_mapped_io) 
   spte->in_swap = in_swap;
   spte->mem_mapped_io = mem_mapped_io;
 
-	hash_insert (thread_current()->sup_page_table, &spte->hash_elem);
+	hash_insert (&thread_current()->sup_page_table, &spte->hash_elem);
 }
 
 /* Create a new entry and add it to the supplemental page table.
@@ -88,7 +88,7 @@ create_entry_spt(void *vaddr) {
     add_entry_ft (spte->frame_num, spte->page_num);
 
     // hash_insert returns a null pointer if no element equal to element previously existed in it
-    return (hash_insert (thread_current()->sup_page_table, &spte->hash_elem) == NULL); 
+    return (hash_insert (&thread_current()->sup_page_table, &spte->hash_elem) == NULL); 
   } else {
     free(spte);
     return false;
@@ -103,7 +103,7 @@ get_entry_spt(const void *page_num) {
   struct hash_elem *e;
 
   spte.page_num = page_num;
-  e = hash_find (thread_current()->sup_page_table, &spte.hash_elem);
+  e = hash_find (&thread_current()->sup_page_table, &spte.hash_elem);
   return e != NULL ? hash_entry (e, struct spt_entry, hash_elem) : NULL;
 }
 
@@ -114,9 +114,10 @@ struct spt_entry *
 get_entry_from_vaddr_spt(const void *vaddr) {   
   struct spt_entry spte;
   struct hash_elem *e;
-
   spte.page_num = pg_no (vaddr);
-  e = hash_find (thread_current()->sup_page_table, &spte.hash_elem);
+  struct thread * t = thread_current();
+  struct hash * h = &t->sup_page_table;
+  e = hash_find (h, &spte.hash_elem);
   return e != NULL ? hash_entry (e, struct spt_entry, hash_elem) : NULL;
 }
 
@@ -171,7 +172,7 @@ get_all_swapped_out_sector_nums_spt (void) {
 
   struct hash_iterator i;
 
-  hash_first (&i, thread_current()->sup_page_table);
+  hash_first (&i, &thread_current()->sup_page_table);
 
   while (hash_next (&i))
   {

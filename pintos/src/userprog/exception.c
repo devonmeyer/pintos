@@ -157,7 +157,7 @@ page_fault (struct intr_frame *f)
 
   bool success = false;
   printf("Got to 1\n");
-  if(not_present && is_user_vaddr(fault_addr) && fault_addr > ((void *) 0x08048000)){
+  if(not_present && is_user_vaddr(fault_addr)){
     printf("Got to 2\n");
     // At this point we believe that the fault is in error.
     // We should figure out if the fault_addr exists in the supplemental page table

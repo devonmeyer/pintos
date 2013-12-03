@@ -118,7 +118,7 @@ struct thread
 
     struct list children;
 
-    struct hash * sup_page_table;        /* The Supplemental Page Table associated with this thread if it is a user process. */
+    struct hash sup_page_table;        /* The Supplemental Page Table associated with this thread if it is a user process. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
