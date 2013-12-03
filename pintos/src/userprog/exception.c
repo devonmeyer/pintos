@@ -157,11 +157,12 @@ page_fault (struct intr_frame *f)
 
   bool success = false;
   printf("Got to 1\n");
-  if(not_present && is_user_vaddr(fault_addr)){
+  if(not_present && is_user_vaddr(fault_addr) && fault_addr > ((void *) 0x08048000)){
     printf("Got to 2\n");
     // At this point we believe that the fault is in error.
     // We should figure out if the fault_addr exists in the supplemental page table
-    struct spt_entry * entry = get_entry_spt(fault_addr); 
+
+    struct spt_entry * entry = get_entry_from_vaddr_spt(fault_addr); 
     printf("Got to 3\n");
     if (entry != NULL){
       printf("Got to 4\n");
@@ -190,12 +191,7 @@ page_fault (struct intr_frame *f)
   printf("Got to 7\n");
   if(!success){
     printf("Got to 8\n");
-    printf ("Page fault at %p: %s error %s page in %s context.\n",
-            fault_addr,
-            not_present ? "not present" : "rights violation",
-            write ? "writing" : "reading",
-            user ? "user" : "kernel");
-    kill (f);
+    system_exit(-1);
   }
 }
 
