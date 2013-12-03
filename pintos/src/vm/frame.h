@@ -20,5 +20,7 @@ void remove_entry_ft ( void * frame );
 void * get_entry_ft ( void * frame );
 void * get_frame_to_evict ( void );
 void reclaim_frames ( void );
+void * allocate_frame_ft ( void * vaddr );
+
 
 #endif
