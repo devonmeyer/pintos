@@ -18,29 +18,29 @@ static bool allocate_new_frame(struct spt_entry *spte);
 
 /* Initialize the supplemental page table. */
 void
-init_spt (struct thread * t) {
-	hash_init (t->sup_page_table, spt_entry_hash, spt_entry_less, NULL);
+init_spt (struct hash * h) {
+	hash_init (h, spt_entry_hash, spt_entry_less, NULL);
 }
 
 
 /* Returns a hash value for supplemental page table entry spte. */
 static unsigned
-spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED)
+spt_entry_hash (const struct hash_elem *el, void *aux UNUSED)
 {
-  const struct spt_entry *spte = hash_entry (spte_, struct spt_entry, hash_elem);
-  return hash_bytes (&spte->page_num, sizeof spte->page_num);
+  struct spt_entry *entry = hash_entry (el, struct spt_entry, hash_elem);
+  return hash_int ((int) entry->page_num);
 }
 
 
 /* Returns true if supplemental page table entry a precedes supplemental page table entry b. */
 static bool
-spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_,
+spt_entry_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux UNUSED)
 {
-  const struct spt_entry *a = hash_entry (a_, struct spt_entry, hash_elem);
-  const struct spt_entry *b = hash_entry (b_, struct spt_entry, hash_elem);
+  struct spt_entry *my_a = hash_entry (a, struct spt_entry, hash_elem);
+  struct spt_entry *my_b = hash_entry (b, struct spt_entry, hash_elem);
 
-  return a->page_num < b->page_num;
+  return my_a->page_num < my_b->page_num;
 }
 
 
