@@ -61,24 +61,9 @@ add_entry_spt(void *page_num, struct file *f, bool in_swap, bool mem_mapped_io) 
 bool 
 create_entry_spt(void *vaddr) {
   struct spt_entry *spte = malloc(sizeof(struct spt_entry));
-  
-  uint32_t *kpage;
-  bool success = false;
+  uint32_t *kpage = allocate_frame_ft(vaddr);                                               
 
-/* TODO: Call Into Devons frame table */
-  // // (1) Allocate the new frame
-  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  
-  // if (kpage != NULL) {
-
-  //   // (2) Add the mapping for the new frame to the Hardware Page Table
-  //   success = install_page (vaddr, kpage, true); 
-  //   if (success == false) {
-  //     palloc_free_page (kpage);
-  //   }
-  // }
-
-  if (success == true) {
+  if (kpage != NULL) {
     // (3) Create the Supplemental Page Table entry
     spte->page_num = pg_no (vaddr);
     spte->frame_num = pg_no (kpage);
@@ -140,7 +125,9 @@ swap_page_out_spt (const void *page_num, int sector_num) {
   if (spte == NULL) {
     return false;
   } else {
-    pagedir_clear_page (thread_current()->pagedir, (page_num<<12)); // Clear the frame associated with this page
+    void * page = spte->page_num;             // This bitshifting to create a physical
+    uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
+    pagedir_clear_page (thread_current()->pagedir, vaddr); // Clear the frame associated with this page
     spte->in_swap = true;
     spte->sector_num = sector_num;
     return true;
@@ -200,8 +187,9 @@ get_entry_from_swap_spt (const void *page_num) {
     ASSERT (spte != NULL);
 
     if (allocate_new_frame(spte)) {
-      swap_frame_in_st(spte->sector_num,spte->frame_num<<12); // This bitshifting to create a physical
-                                                              // address is a potential source of error          
+      void * frame = spte->frame_num;            // This bitshifting to create a physical
+      uint32_t faddr = ((uint32_t) frame) << 12; // address is a potential source of error      
+      return swap_frame_in_st(spte->sector_num, faddr);                                          
     }
 }
 
@@ -210,9 +198,9 @@ get_entry_from_swap_spt (const void *page_num) {
    calling into the frame table. Returns TRUE if successful, FALSE otherwise. */
 static bool 
 allocate_new_frame(struct spt_entry *spte) {  
-
-  uint32_t *kpage = allocate_frame_ft(spte->page_num<<12); // This bitshifting to create a virtual
-                                                           // address is a potential source of error
+  void * page = spte->page_num;             // This bitshifting to create a virtual
+  uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
+  uint32_t *kpage = allocate_frame_ft(vaddr);                                               
 
   if (kpage != NULL) {
     spte->frame_num = pg_no (kpage);
