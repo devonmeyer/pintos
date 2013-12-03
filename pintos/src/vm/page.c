@@ -69,10 +69,8 @@ create_entry_spt(void *vaddr) {
     spte->frame_num = pg_no (kpage);
     spte->in_swap = false;
     spte->mem_mapped_io = false;
-
     // (4) Add the frame-to-page mapping to the Frame Table
     add_entry_ft (spte->frame_num, spte->page_num);
-
     // hash_insert returns a null pointer if no element equal to element previously existed in it
     return (hash_insert (&thread_current()->sup_page_table, &spte->hash_elem) == NULL); 
   } else {

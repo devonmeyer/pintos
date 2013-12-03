@@ -18,7 +18,6 @@ allocate_frame_ft (void * vaddr) {
 
   // (1) Allocate the new frame
   void * new_frame = palloc_get_page (PAL_USER | PAL_ZERO);
-  
   while ( new_frame == NULL ){
   	// Must perform an eviction
   	void * evict = get_frame_to_evict();
@@ -45,16 +44,14 @@ allocate_frame_ft (void * vaddr) {
 
 
   }
- 	add_entry_ft (new_frame, pg_no(vaddr));
+  add_entry_ft (new_frame, pg_no(vaddr));
+  if (!install_page (pg_round_down(vaddr), new_frame, true)) {
 
-  	if (!install_page (vaddr, new_frame, true)) {
+    palloc_free_page (new_frame);
+   	return NULL;
 
-    	palloc_free_page (new_frame);
-    	return NULL;
-
-  	}
-
-  	return new_frame;
+  }
+  return new_frame;
 
 }
 

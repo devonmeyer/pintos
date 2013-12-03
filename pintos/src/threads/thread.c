@@ -14,6 +14,7 @@
 #include "threads/thread.h"
 #include "userprog/process.h"
 #include "vm/page.h"
+#include "vm/swap.h"
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -137,6 +138,8 @@ thread_init (void)
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
+  initialize_ft();
+  //init_st();
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
 }
