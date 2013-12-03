@@ -13,7 +13,7 @@
 // Static method declarations:
 static unsigned spt_entry_hash (const struct hash_elem *spte_, void *aux UNUSED);
 static bool spt_entry_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
-
+static bool allocate_new_frame(struct spt_entry *spte);
 
 
 /* Initialize the supplemental page table. */
@@ -61,23 +61,9 @@ add_entry_spt(void *page_num, struct file *f, bool in_swap, bool mem_mapped_io) 
 bool 
 create_entry_spt(void *vaddr) {
   struct spt_entry *spte = malloc(sizeof(struct spt_entry));
-  
-  uint32_t *kpage;
-  bool success = false;
+  uint32_t *kpage = allocate_frame_ft(vaddr);                                               
 
-  // (1) Allocate the new frame
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  
   if (kpage != NULL) {
-
-    // (2) Add the mapping for the new frame to the Hardware Page Table
-    success = install_page (vaddr, kpage, true); 
-    if (success == false) {
-      palloc_free_page (kpage);
-    }
-  }
-
-  if (success == true) {
     // (3) Create the Supplemental Page Table entry
     spte->page_num = pg_no (vaddr);
     spte->frame_num = pg_no (kpage);
@@ -140,7 +126,10 @@ swap_page_out_spt (const void *page_num, int sector_num) {
   if (spte == NULL) {
     return false;
   } else {
-    spte->in_swap = false;
+    void * page = spte->page_num;             // This bitshifting to create a physical
+    uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
+    pagedir_clear_page (thread_current()->pagedir, vaddr); // Clear the frame associated with this page
+    spte->in_swap = true;
     spte->sector_num = sector_num;
     return true;
   }
@@ -156,7 +145,7 @@ swap_page_in_spt (const void *page_num) {
   if (spte == NULL) {
     return false;
   } else {
-    spte->in_swap = true;
+    spte->in_swap = false;
     spte->sector_num = -1;
     return true;
   }
@@ -186,3 +175,47 @@ get_all_swapped_out_sector_nums_spt (void) {
 
   return swapped_out_sectors;
 }
+
+
+
+/* The page fault handler calls this method once it has realized that 
+   the target page is stored in the swap partition. The method allocates
+   a new frame, then calls into the swap table to swap it into memory. */
+bool
+get_entry_from_swap_spt (const void *page_num) {
+    struct spt_entry *spte = get_entry_spt (page_num);
+    ASSERT (spte->in_swap);
+    ASSERT (spte != NULL);
+
+    if (allocate_new_frame(spte)) {
+      void * frame = spte->frame_num;            // This bitshifting to create a physical
+      uint32_t faddr = ((uint32_t) frame) << 12; // address is a potential source of error      
+      return swap_frame_in_st(spte->sector_num, faddr);                                          
+    }
+}
+
+
+/* Allocates a new frame for the given supplemental page table entry by
+   calling into the frame table. Returns TRUE if successful, FALSE otherwise. */
+static bool 
+allocate_new_frame(struct spt_entry *spte) {  
+  void * page = spte->page_num;             // This bitshifting to create a virtual
+  uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
+  uint32_t *kpage = allocate_frame_ft(vaddr);                                               
+
+  if (kpage != NULL) {
+    spte->frame_num = pg_no (kpage);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
+
+
+
+
+
+
+

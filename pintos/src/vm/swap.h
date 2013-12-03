@@ -20,8 +20,8 @@ struct block * swap_block;		// Block device partitioned for swap
 struct bitmap * st_bitmap;		// One to one bitmap of sectors to keep track of swap slots
 
 void init_st(void);
-void swap_frame_out_st(void* frame_number);
-void swap_frame_in_st(block_sector_t sector);
+bool swap_frame_out_st(void * frame_number);
+bool swap_frame_in_st(block_sector_t sector, void * buffer);
 void free_all_swap_slots_for_current_thread_st(void);
 
 /*

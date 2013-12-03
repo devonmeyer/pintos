@@ -30,8 +30,8 @@ init_st(void)
    being stored in swap disk.
    Writes the frame to the swap disk.	
  */
-void 
-swap_frame_out_st(void* frame_number)
+bool 
+swap_frame_out_st(void * frame_number)
 {
 	lock_acquire(&st_lock);
 
@@ -56,6 +56,8 @@ swap_frame_out_st(void* frame_number)
    	}
 
 	lock_release(&st_lock);
+
+	return true;
 }
 
 /* SUMMARY: Swaps a frame in swap disk into memory
@@ -66,8 +68,8 @@ swap_frame_out_st(void* frame_number)
    sector is now free.
    Reads the frame from the swap disk.
  */
-void
-swap_frame_in_st(block_sector_t sector)
+bool
+swap_frame_in_st(block_sector_t sector, void * buffer)
 {
 	lock_acquire(&st_lock);
 
@@ -81,18 +83,16 @@ swap_frame_in_st(block_sector_t sector)
 
 	bitmap_scan_and_flip(st_bitmap, sector, SECTORS_PER_PAGE, SWAP_NOT_FREE);
 
-	void* frame_number; // NEED TO ALLOCATE THIS FRAME
-
 	int i;
 	for(i = 0; i < SECTORS_PER_PAGE; i++) {
-		block_read(swap_block, sector, frame_number);
-		frame_number += BLOCK_SECTOR_SIZE;
+		block_read(swap_block, sector, buffer);
+		buffer += BLOCK_SECTOR_SIZE;
 		sector++;
 	}
 
-	// swap_page_in_spt(page_number);
-
 	lock_release(&st_lock);
+
+	return true;
 }
 
 /* SUMMARY: Frees all frames stored in swap disk for the current thread
