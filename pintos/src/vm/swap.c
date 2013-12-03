@@ -31,7 +31,7 @@ init_st(void)
    Writes the frame to the swap disk.	
  */
 bool 
-swap_frame_out_st(void* frame_number)
+swap_frame_out_st(void * frame_number)
 {
 	lock_acquire(&st_lock);
 
@@ -69,7 +69,7 @@ swap_frame_out_st(void* frame_number)
    Reads the frame from the swap disk.
  */
 bool
-swap_frame_in_st(block_sector_t sector, void* buffer)
+swap_frame_in_st(block_sector_t sector, void * buffer)
 {
 	lock_acquire(&st_lock);
 
@@ -86,7 +86,7 @@ swap_frame_in_st(block_sector_t sector, void* buffer)
 	int i;
 	for(i = 0; i < SECTORS_PER_PAGE; i++) {
 		block_read(swap_block, sector, buffer);
-		bufffer += BLOCK_SECTOR_SIZE;
+		buffer += BLOCK_SECTOR_SIZE;
 		sector++;
 	}
 
