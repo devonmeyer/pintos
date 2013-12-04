@@ -87,6 +87,20 @@ void
 munmap_spt(mapid_t mapid) {
   // (1) Get the list of spt_entry's from the Mapid Table
   //    (a) Write back the pages for every entry
+
+//  file_write_at (struct file *file, const void *buffer, off_t size, off_t file_ofs) 
+  struct list spt_list; // = METHOD FROM ALEX'S CODE
+  struct list_elem *e;
+  for (e = list_begin (&spt_list); e != list_end (&spt_list);
+       e = list_next (e))
+    {
+      struct spt_entry *spte = list_entry (e, struct spt_entry, spt_list);
+      void * page = spte->page_num;             // This bitshifting to create a physical
+      uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
+      file_write_at (spte->file, ((void*)vaddr), PGSIZE, spte->file_offset);
+    }
+
+
   //    (b) hash_delete the entry from the Supplemental Page Table
 
 }
@@ -125,6 +139,22 @@ get_entry_spt(const void *page_num) {
   spte.page_num = page_num;
   e = hash_find (&thread_current()->sup_page_table, &spte.hash_elem);
   return e != NULL ? hash_entry (e, struct spt_entry, hash_elem) : NULL;
+}
+
+/* Removes the entry from the supplemental page table with the given
+   PAGE NUM. */
+void
+remove_entry_spt(const void *page_num) {
+  struct spt_entry spte;
+  struct hash_elem *e;
+
+  spte.page_num = page_num;
+  e = hash_find (&thread_current()->sup_page_table, &spte.hash_elem);
+  if (e == NULL) {
+    PANIC("Couldn't find the supplemental page table entry for removal!");
+  }
+
+  // need to hash_delete
 }
 
 
