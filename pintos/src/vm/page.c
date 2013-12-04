@@ -68,9 +68,10 @@ spt_entry_less (const struct hash_elem *a, const struct hash_elem *b,
 }
 
 
-/* Add an entry for mem_map to the supplemental page table. */
+/* Add an entry for mem_map to the supplemental page table for use with 
+   memory mapping. */
 void 
-add_entry_for_mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
+mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
 	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
 	spte->file = f;
 	spte->page_num = page_num;
@@ -81,6 +82,15 @@ add_entry_for_mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t 
 	hash_insert (&thread_current()->sup_page_table, &spte->hash_elem);
 }
 
+/* Removes all entries with given mapid, for use with memory unmapping. */
+void
+munmap_spt(mapid_t mapid) {
+  // (1) Get the list of spt_entry's from the Mapid Table
+  //    (a) Write back the pages for every entry
+  //    (b) hash_delete the entry from the Supplemental Page Table
+
+}
+
 /* Create a new entry and add it to the supplemental page table.
    Returns TRUE if operation succeeds, FALSE otherwise. */
 bool 
@@ -89,13 +99,13 @@ create_entry_spt(void *vaddr) {
   uint32_t *kpage = allocate_frame_ft(vaddr);                                               
 
   if (kpage != NULL) {
-    // (3) Create the Supplemental Page Table entry
+    // (1) Create the Supplemental Page Table entry
     spte->page_num = pg_no (vaddr);
     spte->frame_num = pg_no (kpage);
     spte->in_swap = false;
     spte->mapid = -1;
 
-    // (4) Add the frame-to-page mapping to the Frame Table
+    // (2) Add the frame-to-page mapping to the Frame Table
     add_entry_ft (spte->frame_num, spte->page_num);
     // hash_insert returns a null pointer if no element equal to element previously existed in it
     return (hash_insert (&thread_current()->sup_page_table, &spte->hash_elem) == NULL); 
