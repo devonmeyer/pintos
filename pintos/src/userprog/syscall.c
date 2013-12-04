@@ -611,7 +611,10 @@ mem_map ( int * arguments ){
 
 
   /* Assuming no errors, let's proceed. */
+  t->mapid_counter++;
+
   add_entry_for_mmap_spt(pg_no(addr), t->fd_array[fd]->file);
+
   //void add_entry_spt(void *page_num, struct file *f);
 
 

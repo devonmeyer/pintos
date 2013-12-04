@@ -120,6 +120,8 @@ struct thread
 
     struct hash sup_page_table;        /* The Supplemental Page Table associated with this thread if it is a user process. */
 
+    int mapid_counter;              /* Used to generate unique mapid's for mem_mapping. */
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
