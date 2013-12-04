@@ -618,7 +618,7 @@ mem_map ( int * arguments ){
 
   // There are a maximum of 16 files in Pintos
   for (i = 0; i < 16; i++) {
-    if (list_empty(t->mmap_table[i])) {
+    if (list_empty(&t->mmap_table[i])) {
       mapid = i;
     }
   }
