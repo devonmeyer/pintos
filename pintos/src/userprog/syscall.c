@@ -330,15 +330,7 @@ void
 system_exit(int status){
   struct thread * current_thread = thread_current();
   printf("%s: exit(%d)\n", current_thread->name, status);
-//<<<<<<< HEAD
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
-  // NOT SURE IF THE BOTTOM CODE IS CORRECT OR NOT, BUT IT WAS CAUSING INFINITE LOOP
-/*=======
-  if (thread_exists(current_thread->parent)){
-    set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
-  }
-}
->>>>>>> 294f5e9a46575bf86ff01c771745032cacebd97a*/
   thread_exit();
 }
 
@@ -618,11 +610,17 @@ mem_map ( int * arguments ){
   int page_num = ((int)pg_no(addr));
   int mapid = -1;
 
+<<<<<<< HEAD
   // There are a maximum of 16 files in Pintos
   for (i = 0; i < 16; i++) {
     if (t->mmap_table[i] == NULL) {
       mapid = i;
     }
+=======
+  for (i = 0; i < num_mmap_pages; i++) {
+    mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
+    page_num += PGSIZE;
+>>>>>>> 08a0520e871e49599028e3daa1e42071c6ec7cf7
   }
 
   if (mapid == -1) {
