@@ -165,7 +165,7 @@ page_fault (struct intr_frame *f)
       // Page exists in the supplemental page table.
       // Must be a swap or memmap etc.
 
-      // Now, we can determine what to do!
+      // Now, we notify the SPT to deal with the entry that needs to work.
       handle_page_fault_spt ( entry );
 
       success = true;
