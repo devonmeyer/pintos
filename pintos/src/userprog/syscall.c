@@ -614,21 +614,27 @@ mem_map ( int * arguments ){
      but don't allocate the frames from the Frame Table, thus it is LAZY. */
   int num_mmap_pages = (fl / PGSIZE) + 1; // +1 to cover any "tail" sticking out beyond 
   int i;
-  int page_num = ((int)pg_no(addr));
-  int mapid = t->mapid_counter;
+  int mapid = -1;
+
+  // There are a maximum of 16 files in Pintos
+  for (i = 0; i < 16; i++) {
+    if (list_empty(t->mmap_table[i])) {
+      mapid = i;
+    }
+  }
+
+  if (mapid == -1) {
+    PANIC("No available spaces in the Mapid Table.");
+  }
 
   for (i = 0; i < num_mmap_pages; i++) {
-    mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
+    int address = ((int)addr);
+    address += (PGSIZE * i);
+    int page_num = pg_no(address);
+    mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, mapid);
     page_num += PGSIZE;
   }
 
-
-  t->mapid_counter++;
-
-  // There are a maximum of 16 files in Pintos
-  if (t->mapid_counter >= 16) {
-    t->mapid_counter = 0;
-  }
 
   return mapid;
 }

@@ -8,6 +8,7 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 #include "vm/frame.h"
+#include "vm/mmap.h"
 
 
 // Static method declarations:
@@ -76,6 +77,8 @@ mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
   spte->in_swap = false;
   spte->file_offset = file_offset;
 
+  add_entry_mmapt(mapid, spte);
+
 	hash_insert (&thread_current()->sup_page_table, &spte->hash_elem);
 }
 
@@ -83,8 +86,24 @@ mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
 void
 munmap_spt(mapid_t mapid) {
   // (1) Get the list of spt_entry's from the Mapid Table
-  //    (a) Write back the pages for every entry
-  //    (b) hash_delete the entry from the Supplemental Page Table
+  struct list *spt_list = get_entries_mmapt(mapid);
+  struct list_elem *e;
+  for (e = list_begin (spt_list); e != list_end (spt_list);
+       e = list_next (e))
+    {
+      struct spt_entry *spte = list_entry (e, struct spt_entry, list_elem);
+      void * page = spte->page_num;             // This bitshifting to create a physical
+      uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
+      
+      // (a) Write back the pages for every entry
+      file_write_at (spte->file, ((void*)vaddr), PGSIZE, spte->file_offset);
+      
+      // (b) Remove the entry from the Supplemental Page Table
+      remove_entry_spt (page);
+    }
+
+  // (2) Remove the entry from the Mapid Table
+  remove_entry_mmapt (mapid);
 
 }
 
@@ -122,6 +141,26 @@ get_entry_spt(const void *page_num) {
   spte.page_num = page_num;
   e = hash_find (&thread_current()->sup_page_table, &spte.hash_elem);
   return e != NULL ? hash_entry (e, struct spt_entry, hash_elem) : NULL;
+}
+
+/* Removes the entry from the supplemental page table with the given
+   PAGE NUM. */
+void
+remove_entry_spt(const void *page_num) {
+  struct spt_entry spte;
+  struct spt_entry *spte_to_free = get_entry_spt (page_num);
+  struct hash_elem *e;
+
+  spte.page_num = page_num;
+  e = hash_delete (&thread_current()->sup_page_table, &spte.hash_elem);
+  if (e == NULL) {
+    PANIC("Couldn't find the supplemental page table entry for removal!");
+  }
+  if (spte_to_free != NULL) {
+    free(spte_to_free);
+  } else {
+    PANIC("Couldn't find the supplemental page table entry to free!");
+  }
 }
 
 
