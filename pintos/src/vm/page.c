@@ -30,10 +30,17 @@ bool handle_page_fault_spt(struct spt_entry * spte) {
     get_entry_from_swap_spt(spte->page_num);
   } else if (spte->mapid != -1){
     // MEMORY MAPPED FILE
-    
+    uint32_t vaddr = ((uint32_t) spte->page_num) << 12; // This is a potential source of error
+    uint32_t *kpage = allocate_frame_ft(vaddr);                                           
+
+    if (kpage != NULL) {
+      spte->frame_num = pg_no (kpage);
+      add_entry_ft (spte->frame_num, spte->page_num); // Add the frame-to-page mapping to the Frame Table
+    } else {
+      return false;
+    }
+    return true;
   }
-
-
 }
 
 /* Returns a hash value for supplemental page table entry spte. */
@@ -59,12 +66,13 @@ spt_entry_less (const struct hash_elem *a, const struct hash_elem *b,
 
 /* Add an entry for mem_map to the supplemental page table. */
 void 
-add_entry_for_mmap_spt(void *page_num, struct file *f, mapid_t mapid) {
+add_entry_for_mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
 	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
 	spte->file = f;
 	spte->page_num = page_num;
   spte->mapid = mapid;
   spte->in_swap = false;
+  spte->file_offset = file_offset;
 
 	hash_insert (&thread_current()->sup_page_table, &spte->hash_elem);
 }

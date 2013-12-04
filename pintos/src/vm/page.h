@@ -11,6 +11,7 @@ struct spt_entry {
 	void *page_num; /* The virtual page number, acts as the key for the hash table. */
 	void *frame_num; /* The physical frame number. */
 	int sector_num; /* The sector number representing the beginning of the swap slot. */
+	int file_offset; /* Where in the file this is mem_mapping begins. */
 	struct file * file;
 	mapid_t mapid;
 	bool in_swap;
@@ -24,7 +25,7 @@ struct sector_item {
 void init_spt (struct hash * h);
 bool handle_page_fault_spt(struct spt_entry * spte);
 bool create_entry_spt(void *vaddr);
-void add_entry_for_mmap_spt(void *page_num, struct file *f, mapid_t mapid);
+void add_entry_for_mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid);
 struct spt_entry* get_entry_spt(const void *page_num);
 bool page_is_in_swap_spt (const void *page_num);
 bool swap_page_out_spt (const void *page_num, int sector_num);
