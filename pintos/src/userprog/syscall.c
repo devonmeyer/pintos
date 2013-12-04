@@ -34,8 +34,7 @@ static void system_close(int * arguments);
 static void system_seek(struct intr_frame *f, int * arguments);
 
 static int mem_map(int * arguments);
-static void mem_unmap(void);
-
+static void mem_unmap ( int * arguments );
 static int system_exec (int * arguments);
 
 static struct lock file_sys_lock;
@@ -121,7 +120,8 @@ syscall_handler (struct intr_frame *f)
         f->eax = mem_map(arguments);
         break;
       case SYS_MUNMAP:
-        mem_unmap();
+        get_arguments(f, 1, arguments);
+        mem_unmap(arguments);
         break;
       default:
       	system_exit(-1);  
@@ -616,22 +616,27 @@ mem_map ( int * arguments ){
   int num_mmap_pages = (fl / PGSIZE) + 1; // +1 to cover any "tail" sticking out beyond 
   int i;
   int page_num = ((int)pg_no(addr));
-  t->mapid_counter++;
-  
+  int mapid = t->mapid_counter;
+
   for (i = 1; i <= num_mmap_pages; i++) {
-    add_entry_for_mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
+    mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
     page_num += PGSIZE;
   }
 
 
-  return t->mapid_counter;
+  t->mapid_counter++;
+
+  return mapid;
 }
 
 
+/*
+  System Call: 
+  void munmap (mapid_t mapping)
+*/
 static void
-mem_unmap ( void ){
-
-  system_exit(-1);
+mem_unmap ( int * arguments ){
+  mapid_t mapid = ((mapid_t) arguments[0]); 
 
 }
 
@@ -641,6 +646,10 @@ is_page_aligned ( void * a ){
   return !(((uint32_t) a ) % PGSIZE);
 
 }
+
+
+
+
 
 
 
