@@ -120,7 +120,7 @@ syscall_handler (struct intr_frame *f)
         break;
       case SYS_MUNMAP:
         get_arguments(f, 1, arguments);
-        f->eax = mem_unmap(arguments);
+        mem_unmap(arguments);
         break;
       default:
       	system_exit(-1);  
