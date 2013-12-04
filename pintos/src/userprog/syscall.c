@@ -610,17 +610,11 @@ mem_map ( int * arguments ){
   int page_num = ((int)pg_no(addr));
   int mapid = -1;
 
-<<<<<<< HEAD
   // There are a maximum of 16 files in Pintos
   for (i = 0; i < 16; i++) {
     if (t->mmap_table[i] == NULL) {
       mapid = i;
     }
-=======
-  for (i = 0; i < num_mmap_pages; i++) {
-    mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
-    page_num += PGSIZE;
->>>>>>> 08a0520e871e49599028e3daa1e42071c6ec7cf7
   }
 
   if (mapid == -1) {

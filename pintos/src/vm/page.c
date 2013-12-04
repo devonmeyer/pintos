@@ -97,7 +97,6 @@ munmap_spt(mapid_t mapid) {
       file_write_at (spte->file, ((void*)vaddr), PGSIZE, spte->file_offset);
     }
 
-
   //    (b) hash_delete the entry from the Supplemental Page Table
 
 }
@@ -143,15 +142,19 @@ get_entry_spt(const void *page_num) {
 void
 remove_entry_spt(const void *page_num) {
   struct spt_entry spte;
+  struct spt_entry *spte_to_free = get_entry_spt (page_num);
   struct hash_elem *e;
 
   spte.page_num = page_num;
-  e = hash_find (&thread_current()->sup_page_table, &spte.hash_elem);
+  e = hash_delete (&thread_current()->sup_page_table, &spte.hash_elem);
   if (e == NULL) {
     PANIC("Couldn't find the supplemental page table entry for removal!");
   }
-
-  // need to hash_delete
+  if (spte_to_free != NULL) {
+    free(spte_to_free);
+  } else {
+    PANIC("Couldn't find the supplemental page table entry to free!");
+  }
 }
 
 
