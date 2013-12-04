@@ -117,9 +117,11 @@ syscall_handler (struct intr_frame *f)
       case SYS_MMAP:
         get_arguments(f, 2, arguments);
         f->eax = mem_map(arguments);
+        break;
       case SYS_MUNMAP:
         get_arguments(f, 1, arguments);
         f->eax = mem_unmap(arguments);
+        break;
       default:
       	system_exit(-1);  
         break;
