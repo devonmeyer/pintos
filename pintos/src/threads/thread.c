@@ -593,7 +593,6 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->donated_priorities);
   list_init (&t->children);
   t->parent = NULL;
-  t->mapid_counter = 0;
   struct fd_info * fd_array[18];
 
  
