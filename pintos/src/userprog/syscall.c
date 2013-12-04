@@ -331,6 +331,12 @@ system_exit(int status){
   struct thread * current_thread = thread_current();
   printf("%s: exit(%d)\n", current_thread->name, status);
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
+  int i;
+  for (i = 0; i < 16; i++) {
+    if (!list_empty(&current_thread->mmap_table[i])) {
+      mem_unmap (i);
+    }
+  }
   thread_exit();
 }
 
@@ -647,7 +653,7 @@ mem_map ( int * arguments ){
 static void
 mem_unmap ( int * arguments ){
   mapid_t mapid = ((mapid_t) arguments[0]); 
-
+  munmap_spt(mapid);
 }
 
 static bool
