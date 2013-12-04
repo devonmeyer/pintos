@@ -575,7 +575,6 @@ mem_map ( int * arguments ){
   int fd = ((int) arguments[0]); 
   void *addr = ((void*) arguments[1]);
   struct thread *t = thread_current ();
-  mapid_t mapid;
 
   /* ERROR CHECKING: */
 
@@ -615,14 +614,14 @@ mem_map ( int * arguments ){
   int num_mmap_pages = (fl / PGSIZE) + 1; // +1 to cover any "tail" sticking out beyond 
   int i;
   int page_num = ((int)pg_no(addr));
+  t->mapid_counter++;
+  
   for (i = 1; i <= num_mmap_pages; i++) {
     add_entry_for_mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
-    t->mapid_counter++;
     page_num += PGSIZE;
   }
 
-
-  return mapid;
+  return t->mapid_counter;
 }
 
 
