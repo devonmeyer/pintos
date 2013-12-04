@@ -22,6 +22,7 @@ static void validate_file_descriptor(const int fd);
 static bool file_already_exists (const char * file_name);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static void debug (char * debug_msg);
+static bool is_page_aligned ( void * a );
 
 static int system_open(int * arguments);
 static int system_read(int * arguments);
@@ -577,7 +578,6 @@ mem_map ( int * arguments ){
   int fd = ((int) arguments[0]); 
   void *addr = ((void*) arguments[1]);
   struct thread *t = thread_current ();
-
   /* ERROR CHECKING: */
 
   // Cannot mem_map the console in or console out
@@ -603,7 +603,7 @@ mem_map ( int * arguments ){
   }
 
   // Cannot mem_map a file whose address is not page-aligned
-  if (pg_round_down(addr) != addr) {
+  if (!is_page_aligned(addr)) {
     return -1;
   }
 
@@ -623,6 +623,7 @@ mem_map ( int * arguments ){
     page_num += PGSIZE;
   }
 
+
   t->mapid_counter++;
 
   // There are a maximum of 16 files in Pintos
@@ -641,6 +642,13 @@ mem_map ( int * arguments ){
 static void
 mem_unmap ( int * arguments ){
   mapid_t mapid = ((mapid_t) arguments[0]); 
+
+}
+
+static bool
+is_page_aligned ( void * a ){
+
+  return !(((uint32_t) a ) % PGSIZE);
 
 }
 

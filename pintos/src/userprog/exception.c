@@ -164,9 +164,10 @@ page_fault (struct intr_frame *f)
     if (entry != NULL){
       // Page exists in the supplemental page table.
       // Must be a swap or memmap etc.
-
+      printf("Got to where I'd expect\n");
       // Now, we notify the SPT to deal with the entry that needs to work.
       handle_page_fault_spt ( entry );
+      printf("Got out of code\n");
 
       success = true;
     } else if (f->esp - 32 <= fault_addr){
