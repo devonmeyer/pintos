@@ -164,6 +164,10 @@ page_fault (struct intr_frame *f)
     if (entry != NULL){
       // Page exists in the supplemental page table.
       // Must be a swap or memmap etc.
+
+      // Now, we can determine what to do!
+      handle_page_fault_spt ( entry );
+
       success = true;
     } else if (f->esp - 32 <= fault_addr){
       // We now know that the user needs to grow the stack
