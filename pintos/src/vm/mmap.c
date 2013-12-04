@@ -10,19 +10,19 @@ init_mmapt(void)
 }
 
 void 
-add_mmapt_entry(mapid_t mapid, struct spt_entry * spt_entry)
+add_entry_mmapt(mapid_t mapid, struct spt_entry * spt_entry)
 {
 	list_push_back (thread_current()->mmap_table[mapid], &(spt_entry->list_elem));
 }
 
 struct list * 
-get_mmapt_entries(mapid_t mapid)
+get_entries_mmapt(mapid_t mapid)
 {
 	return thread_current()->mmap_table[mapid];
 }
 
 void 
-remove_mmapt_entry(mapid_t mapid)
+remove_entry_mmapt(mapid_t mapid)
 {
 	struct list * list = thread_current()->mmap_table[mapid];
 	struct list_elem * e;
