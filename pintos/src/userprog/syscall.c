@@ -22,6 +22,7 @@ static void validate_file_descriptor(const int fd);
 static bool file_already_exists (const char * file_name);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static void debug (char * debug_msg);
+static bool is_page_aligned ( void * a );
 
 static int system_open(int * arguments);
 static int system_read(int * arguments);
@@ -116,10 +117,12 @@ syscall_handler (struct intr_frame *f)
         system_close(arguments);
       	break;
       case SYS_MMAP:
-        get_arguments(f, 1, arguments);
+        get_arguments(f, 2, arguments);
         f->eax = mem_map(arguments);
+        break;
       case SYS_MUNMAP:
         mem_unmap();
+        break;
       default:
       	system_exit(-1);  
         break;
@@ -575,7 +578,6 @@ mem_map ( int * arguments ){
   int fd = ((int) arguments[0]); 
   void *addr = ((void*) arguments[1]);
   struct thread *t = thread_current ();
-
   /* ERROR CHECKING: */
 
   // Cannot mem_map the console in or console out
@@ -601,7 +603,7 @@ mem_map ( int * arguments ){
   }
 
   // Cannot mem_map a file whose address is not page-aligned
-  if (pg_round_down(addr) != addr) {
+  if (!is_page_aligned(addr)) {
     return -1;
   }
 
@@ -621,6 +623,7 @@ mem_map ( int * arguments ){
     page_num += PGSIZE;
   }
 
+
   return t->mapid_counter;
 }
 
@@ -629,6 +632,13 @@ static void
 mem_unmap ( void ){
 
   system_exit(-1);
+
+}
+
+static bool
+is_page_aligned ( void * a ){
+
+  return !(((uint32_t) a ) % PGSIZE);
 
 }
 
