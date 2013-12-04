@@ -330,15 +330,7 @@ void
 system_exit(int status){
   struct thread * current_thread = thread_current();
   printf("%s: exit(%d)\n", current_thread->name, status);
-//<<<<<<< HEAD
   set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
-  // NOT SURE IF THE BOTTOM CODE IS CORRECT OR NOT, BUT IT WAS CAUSING INFINITE LOOP
-/*=======
-  if (thread_exists(current_thread->parent)){
-    set_exit_status_of_child(current_thread->parent, (int) current_thread->tid, status);
-  }
-}
->>>>>>> 294f5e9a46575bf86ff01c771745032cacebd97a*/
   thread_exit();
 }
 
@@ -618,7 +610,7 @@ mem_map ( int * arguments ){
   int page_num = ((int)pg_no(addr));
   int mapid = t->mapid_counter;
 
-  for (i = 1; i <= num_mmap_pages; i++) {
+  for (i = 0; i < num_mmap_pages; i++) {
     mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
     page_num += PGSIZE;
   }
