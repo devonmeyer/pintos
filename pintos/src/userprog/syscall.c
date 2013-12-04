@@ -536,10 +536,14 @@ is_valid_memory_access(const void *vaddr) {
 		return false;
 	} else if (pagedir_get_page(thread_current ()->pagedir, vaddr) == NULL) { 
 		// Pointer to Unmapped Virtual Memory
-        if (debug_mode) {
-    printf ("--- Unmapped ---\n");
-  }
-		return false;
+        
+    if (get_entry_from_vaddr_spt(vaddr) == NULL){
+      if (debug_mode) {
+          printf ("--- Unmapped ---\n");
+        } 
+      return false;
+    }
+        
 	}
 
 	return true;
@@ -602,6 +606,9 @@ mem_map ( int * arguments ){
   //The range of pages mapped overlaps any exisitng set of mapped pages
   /* TODO: ERROR CHECKING HERE. */
 
+  if (is_valid_memory_access(addr)){
+    return -1;
+  }
 
   /* Allocate the full number of entries in the Supplemental Page Table, 
      but don't allocate the frames from the Frame Table, thus it is LAZY. */
