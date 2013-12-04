@@ -9,6 +9,7 @@
 #include "userprog/process.h"
 #include "vm/frame.h"
 #include "vm/mmap.h"
+#include "userprog/syscall.h"
 
 
 // Static method declarations:
@@ -85,25 +86,40 @@ mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
 /* Removes all entries with given mapid, for use with memory unmapping. */
 void
 munmap_spt(mapid_t mapid) {
+  printf("mapid %i=\n",mapid);
+
   // (1) Get the list of spt_entry's from the Mapid Table
   struct list *spt_list = get_entries_mmapt(mapid);
+  printf("A\n");
   struct list_elem *e;
   for (e = list_begin (spt_list); e != list_end (spt_list);
        e = list_next (e))
     {
+        printf("1\n");
+
       struct spt_entry *spte = list_entry (e, struct spt_entry, list_elem);
       void * page = spte->page_num;             // This bitshifting to create a physical
       uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
-      
+              printf("2\n");
+
       // (a) Write back the pages for every entry
+      lock_acquire (&file_sys_lock);
       file_write_at (spte->file, ((void*)vaddr), PGSIZE, spte->file_offset);
-      
+      lock_release (&file_sys_lock);
+
+              printf("3\n");
+
       // (b) Remove the entry from the Supplemental Page Table
       remove_entry_spt (page);
+              printf("%4\n");
+
     }
+  printf("B\n");
 
   // (2) Remove the entry from the Mapid Table
   remove_entry_mmapt (mapid);
+  printf("C\n");
+
 
 }
 
