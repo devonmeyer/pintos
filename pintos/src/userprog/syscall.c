@@ -32,7 +32,7 @@ static unsigned system_tell(int * arguments);
 static void system_close(int * arguments);
 static void system_seek(struct intr_frame *f, int * arguments);
 
-static void mem_map(void);
+static int mem_map(int * arguments);
 static void mem_unmap(void);
 
 static int system_exec (int * arguments);
@@ -116,7 +116,8 @@ syscall_handler (struct intr_frame *f)
         system_close(arguments);
       	break;
       case SYS_MMAP:
-        mem_map();
+        get_arguments(f, 1, arguments);
+        f->eax = mem_map(arguments);
       case SYS_MUNMAP:
         mem_unmap();
       default:
@@ -565,12 +566,59 @@ debug (char * debug_msg) {
   }
 }
 
+/*
+  System Call: 
+  mapid_t mmap (int fd, void *addr)
+*/
+static int
+mem_map ( int * arguments ){
+  int fd = ((int) arguments[0]); 
+  void *addr = ((void*) arguments[1]);
+  struct thread *t = thread_current ();
+  mapid_t mapid;
 
-static void
-mem_map ( void ){
+  /* ERROR CHECKING: */
 
-  system_exit(-1);
+  // Cannot mem_map the console in or console out
+  if (fd == 0 || fd == 1) {
+    return -1;
+  }
 
+  // Cannot mem_map an invalid fd
+  if (t->fd_array[fd] == NULL) {
+    return -1;
+  }
+
+  // Cannot mem_map a file with a length of zero bytes
+  int fl = ((int)file_length (t->fd_array[fd]->file));
+  if (fl == 0) {
+    return -1;
+  }
+
+  // Cannot mem_map a file with an address of 0 because 
+  // some Pintos code assumes virtual page 0 is not mapped
+  if (addr == 0) {
+    return -1;
+  }
+
+  // Cannot mem_map a file whose address is not page-aligned
+  if (pg_round_down(addr) != addr) {
+    return -1;
+  }
+
+  //The range of pages mapped overlaps any exisitng set of mapped pages
+  /* TODO: ERROR CHECKING HERE. */
+
+
+  /* Assuming no errors, let's proceed. */
+  t->mapid_counter++;
+
+  add_entry_for_mmap_spt(pg_no(addr), t->fd_array[fd]->file);
+
+  //void add_entry_spt(void *page_num, struct file *f);
+
+
+  return mapid;
 }
 
 
@@ -580,3 +628,9 @@ mem_unmap ( void ){
   system_exit(-1);
 
 }
+
+
+
+
+
+
