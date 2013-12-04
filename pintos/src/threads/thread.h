@@ -120,6 +120,8 @@ struct thread
 
     struct hash sup_page_table;        /* The Supplemental Page Table associated with this thread if it is a user process. */
 
+    struct list * mmap_table[16];
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
