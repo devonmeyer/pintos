@@ -32,6 +32,9 @@ static unsigned system_tell(int * arguments);
 static void system_close(int * arguments);
 static void system_seek(struct intr_frame *f, int * arguments);
 
+static void mem_map(void);
+static void mem_unmap(void);
+
 static int system_exec (int * arguments);
 
 static struct lock file_sys_lock;
@@ -112,8 +115,12 @@ syscall_handler (struct intr_frame *f)
         get_arguments(f, 1, arguments);
         system_close(arguments);
       	break;
+      case SYS_MMAP:
+        mem_map();
+      case SYS_MUNMAP:
+        mem_unmap();
       default:
-      	thread_exit();  
+      	system_exit(-1);  
         break;
     }
 
@@ -556,4 +563,20 @@ debug (char * debug_msg) {
   if (debug_mode == true) {
     printf("%s",debug_msg);
   }
+}
+
+
+static void
+mem_map ( void ){
+
+  system_exit(-1);
+
+}
+
+
+static void
+mem_unmap ( void ){
+
+  system_exit(-1);
+
 }
