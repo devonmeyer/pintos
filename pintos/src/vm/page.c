@@ -86,7 +86,6 @@ mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
 void
 munmap_spt(mapid_t mapid) {
   // (1) Get the list of spt_entry's from the Mapid Table
-  //    (a) Write back the pages for every entry
   struct list *spt_list = get_entries_mmapt(mapid);
   struct list_elem *e;
   for (e = list_begin (spt_list); e != list_end (spt_list);
@@ -95,13 +94,16 @@ munmap_spt(mapid_t mapid) {
       struct spt_entry *spte = list_entry (e, struct spt_entry, list_elem);
       void * page = spte->page_num;             // This bitshifting to create a physical
       uint32_t vaddr = ((uint32_t) page) << 12; // address is a potential source of error
+      
+      // (a) Write back the pages for every entry
       file_write_at (spte->file, ((void*)vaddr), PGSIZE, spte->file_offset);
+      
+      // (b) Remove the entry from the Supplemental Page Table
+      remove_entry_spt (page);
     }
 
-  //    (b) hash_delete the entry from the Supplemental Page Table
-    remove_entry_spt (page);
-  //    (c) remove the entry from the Mapid Table
-    remove_entry_mmapt (mapid);
+  // (2) Remove the entry from the Mapid Table
+  remove_entry_mmapt (mapid);
 
 }
 

@@ -7,8 +7,8 @@
 #include "vm/page.h"
 
 void init_mmapt(void);
-void add_mmapt_entry(mapid_t mapid, struct spt_entry * spt_entry);
-struct list * get_mmapt_entries(mapid_t mapid);
-void remove_mmapt_entry(mapid_t mapid);
+void add_entry_mmapt(mapid_t mapid, struct spt_entry * spt_entry);
+struct list * get_entries_mmapt(mapid_t mapid);
+void remove_entry_mmapt(mapid_t mapid);
 
 #endif
