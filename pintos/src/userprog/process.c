@@ -22,6 +22,7 @@
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
 #include "vm/page.h"
+#include "vm/mmap.h"
 
 #define MAX_ARGS 25
 
@@ -189,6 +190,7 @@ start_process (void *file_name_)
   bool success;
 
   init_spt (&thread_current()->sup_page_table); // Initialize this process's Supplemental Page Table
+  init_mmapt();
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
