@@ -22,6 +22,7 @@ static void validate_file_descriptor(const int fd);
 static bool file_already_exists (const char * file_name);
 static void get_arguments(struct intr_frame *f, int num_args, int * arguments);
 static void debug (char * debug_msg);
+static bool is_page_aligned ( void * a );
 
 static int system_open(int * arguments);
 static int system_read(int * arguments);
@@ -32,9 +33,8 @@ static unsigned system_tell(int * arguments);
 static void system_close(int * arguments);
 static void system_seek(struct intr_frame *f, int * arguments);
 
-static void mem_map(void);
-static void mem_unmap(void);
-
+static int mem_map(int * arguments);
+static void mem_unmap ( int * arguments );
 static int system_exec (int * arguments);
 
 static struct lock file_sys_lock;
@@ -116,9 +116,13 @@ syscall_handler (struct intr_frame *f)
         system_close(arguments);
       	break;
       case SYS_MMAP:
-        mem_map();
+        get_arguments(f, 2, arguments);
+        f->eax = mem_map(arguments);
+        break;
       case SYS_MUNMAP:
-        mem_unmap();
+        get_arguments(f, 1, arguments);
+        mem_unmap(arguments);
+        break;
       default:
       	system_exit(-1);  
         break;
@@ -565,18 +569,95 @@ debug (char * debug_msg) {
   }
 }
 
+/*
+  System Call: 
+  mapid_t mmap (int fd, void *addr)
+*/
+static int
+mem_map ( int * arguments ){
+  int fd = ((int) arguments[0]); 
+  void *addr = ((void*) arguments[1]);
+  struct thread *t = thread_current ();
+  /* ERROR CHECKING: */
 
+  // Cannot mem_map the console in or console out
+  if (fd == 0 || fd == 1) {
+    return -1;
+  }
+
+  // Cannot mem_map an invalid fd
+  if (t->fd_array[fd] == NULL) {
+    return -1;
+  }
+
+  // Cannot mem_map a file with a length of zero bytes
+  int fl = ((int)file_length (t->fd_array[fd]->file));
+  if (fl == 0) {
+    return -1;
+  }
+
+  // Cannot mem_map a file with an address of 0 because 
+  // some Pintos code assumes virtual page 0 is not mapped
+  if (addr == 0) {
+    return -1;
+  }
+
+  // Cannot mem_map a file whose address is not page-aligned
+  if (!is_page_aligned(addr)) {
+    return -1;
+  }
+
+  //The range of pages mapped overlaps any exisitng set of mapped pages
+  /* TODO: ERROR CHECKING HERE. */
+
+
+  /* Allocate the full number of entries in the Supplemental Page Table, 
+     but don't allocate the frames from the Frame Table, thus it is LAZY. */
+  int num_mmap_pages = (fl / PGSIZE) + 1; // +1 to cover any "tail" sticking out beyond 
+  int i;
+  int page_num = ((int)pg_no(addr));
+  int mapid = t->mapid_counter;
+
+  for (i = 1; i <= num_mmap_pages; i++) {
+    mmap_spt(((void*)page_num), t->fd_array[fd]->file, i*PGSIZE, t->mapid_counter);
+    page_num += PGSIZE;
+  }
+
+
+  t->mapid_counter++;
+
+  // There are a maximum of 16 files in Pintos
+  if (t->mapid_counter >= 16) {
+    t->mapid_counter = 0;
+  }
+
+  return mapid;
+}
+
+
+/*
+  System Call: 
+  void munmap (mapid_t mapping)
+*/
 static void
-mem_map ( void ){
+mem_unmap ( int * arguments ){
+  mapid_t mapid = ((mapid_t) arguments[0]); 
 
-  system_exit(-1);
+}
+
+static bool
+is_page_aligned ( void * a ){
+
+  return !(((uint32_t) a ) % PGSIZE);
 
 }
 
 
-static void
-mem_unmap ( void ){
 
-  system_exit(-1);
 
-}
+
+
+
+
+
+

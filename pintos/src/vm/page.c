@@ -22,6 +22,30 @@ init_spt (struct hash * h) {
 	hash_init (h, spt_entry_hash, spt_entry_less, NULL);
 }
 
+/* Called by the page fault handler in exception.c. Passes responsibility
+   to the Supplemental Page Table to address page faults. */
+bool handle_page_fault_spt(struct spt_entry * spte) {
+  if (spte->in_swap) {
+    // STORED IN SWAP PARTITION
+    get_entry_from_swap_spt(spte->page_num);
+  } else if (spte->mapid != -1){
+    // MEMORY MAPPED FILE
+    uint32_t vaddr = ((uint32_t) spte->page_num) << 12; // This is a potential source of error
+    uint32_t *kpage = allocate_frame_ft(vaddr);                                           
+
+    if (kpage != NULL) {
+      spte->frame_num = pg_no (kpage);      
+
+      // Actually write from the file to the memory frame:      
+      file_read_at (spte->file, kpage, PGSIZE, spte->file_offset);       
+
+      add_entry_ft (spte->frame_num, spte->page_num); // Add the frame-to-page mapping to the Frame Table
+    } else {
+      return false;
+    }
+    return true;
+  }
+}
 
 /* Returns a hash value for supplemental page table entry spte. */
 static unsigned
@@ -44,16 +68,27 @@ spt_entry_less (const struct hash_elem *a, const struct hash_elem *b,
 }
 
 
-/* Add an entry to the supplemental page table. */
+/* Add an entry for mem_map to the supplemental page table for use with 
+   memory mapping. */
 void 
-add_entry_spt(void *page_num, struct file *f, bool in_swap, bool mem_mapped_io) {
+mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
 	struct spt_entry *spte = malloc(sizeof(struct spt_entry));
 	spte->file = f;
 	spte->page_num = page_num;
-  spte->in_swap = in_swap;
-  spte->mem_mapped_io = mem_mapped_io;
+  spte->mapid = mapid;
+  spte->in_swap = false;
+  spte->file_offset = file_offset;
 
 	hash_insert (&thread_current()->sup_page_table, &spte->hash_elem);
+}
+
+/* Removes all entries with given mapid, for use with memory unmapping. */
+void
+munmap_spt(mapid_t mapid) {
+  // (1) Get the list of spt_entry's from the Mapid Table
+  //    (a) Write back the pages for every entry
+  //    (b) hash_delete the entry from the Supplemental Page Table
+
 }
 
 /* Create a new entry and add it to the supplemental page table.
@@ -64,12 +99,13 @@ create_entry_spt(void *vaddr) {
   uint32_t *kpage = allocate_frame_ft(vaddr);                                               
 
   if (kpage != NULL) {
-    // (3) Create the Supplemental Page Table entry
+    // (1) Create the Supplemental Page Table entry
     spte->page_num = pg_no (vaddr);
     spte->frame_num = pg_no (kpage);
     spte->in_swap = false;
-    spte->mem_mapped_io = false;
-    // (4) Add the frame-to-page mapping to the Frame Table
+    spte->mapid = -1;
+
+    // (2) Add the frame-to-page mapping to the Frame Table
     add_entry_ft (spte->frame_num, spte->page_num);
     // hash_insert returns a null pointer if no element equal to element previously existed in it
     return (hash_insert (&thread_current()->sup_page_table, &spte->hash_elem) == NULL); 

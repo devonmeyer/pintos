@@ -122,6 +122,8 @@ struct thread
 
     struct list * mmap_table[16];
 
+    int mapid_counter;              /* Used to generate unique mapid's for mem_mapping. */
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
