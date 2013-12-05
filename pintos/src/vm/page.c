@@ -35,7 +35,7 @@ bool handle_page_fault_spt(struct spt_entry * spte) {
     uint32_t *kpage = allocate_frame_ft(vaddr);                                           
     if (kpage != NULL) {
       spte->frame_num = kpage;      
-      // Actually write from the file to the memory frame:      
+      // Actually write from the file to the memory frame:    
       file_read_at (spte->file, vaddr, PGSIZE, spte->file_offset);       
 
     } else {
