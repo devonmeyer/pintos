@@ -46,7 +46,7 @@ syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
   lock_init (&file_sys_lock);
-  debug_mode = false;
+  debug_mode = true;
 }
 
 static void
@@ -356,8 +356,8 @@ system_read(int * arguments){
   
   if (is_valid_memory_access (buffer) == false) {
         if (debug_mode) {
-    printf ("Invalid memory access at %X, exiting...\n",buffer);
-  }
+          printf ("Invalid memory access at %X, exiting...\n",buffer);
+          }
     system_exit(-1);
   }
 
