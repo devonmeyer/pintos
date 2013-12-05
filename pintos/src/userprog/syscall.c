@@ -25,13 +25,14 @@ static void debug (char * debug_msg);
 static bool is_page_aligned ( void * a );
 
 static int system_open(int * arguments);
+static bool system_remove(int * arguments);
 static int system_read(int * arguments);
 static unsigned system_write(int * arguments);
 static int system_filesize(int * arguments);
 static bool system_create(int * arguments);
 static unsigned system_tell(int * arguments);
 static void system_close(int * arguments);
-static void system_seek(struct intr_frame *f, int * arguments);
+static void system_seek(int * arguments);
 
 static int mem_map(int * arguments);
 static void mem_unmap ( int * arguments );
@@ -87,6 +88,7 @@ syscall_handler (struct intr_frame *f)
       	break;
       case SYS_REMOVE:
         get_arguments(f, 1, arguments);
+        f->eax = system_remove(arguments);
       	break;
       case SYS_OPEN:
         get_arguments(f, 1, arguments);
@@ -105,6 +107,8 @@ syscall_handler (struct intr_frame *f)
         f->eax = system_write(arguments);
       	break;
       case SYS_SEEK:
+        get_arguments(f, 2, arguments);
+        system_seek(arguments);
       	break;
       case SYS_TELL:
         get_arguments(f, 1, arguments);
@@ -136,7 +140,7 @@ syscall_handler (struct intr_frame *f)
 }
 
 static void 
-system_seek(struct intr_frame *f, int * arguments)
+system_seek(int * arguments)
 {
   int fd = ((int) arguments[0]);
   int position = ((off_t) arguments[1]);
@@ -151,7 +155,7 @@ system_seek(struct intr_frame *f, int * arguments)
         if (debug_mode) {
     printf ("File with fd=%d was not open, exiting...\n",fd);
   }
-    system_exit(-1);
+    // system_exit(-1); // I dont think we need this here
   }
 }
 
@@ -168,6 +172,40 @@ system_close_all(){
   }
 }
 
+
+/*
+  System call format:
+  bool remove (const char *file)
+*/
+static 
+bool system_remove(int * arguments) {
+  struct file *file = ((struct file*)arguments[0]);
+
+  if (file != NULL) {
+    int i;
+    int fd = -1;
+    struct thread *t = thread_current ();
+    for (i = 2; i < 18; i++) {
+      if (t->fd_array[i]->file == file) {
+        fd = i;
+        break;
+      }
+    }   
+
+    if (fd == -1) {
+    // the specified file does not belong to the 
+    // current thread and thus cannot be deleted
+      return false; 
+    }
+
+    filesys_remove(t->fd_array[fd]->file_name);    
+    return true;
+  } else {
+    // the file was not passed into the system_remove
+    // call properly -> it was a null pointer!
+    return false;
+  }
+}
 
 
 /*
@@ -293,8 +331,7 @@ if (is_valid_memory_access(file_name) == false) {
     }
       return -1;
     }
-    
-    
+
 
     struct file * open_file = filesys_open (file_name);
     struct thread *t = thread_current ();
@@ -302,6 +339,7 @@ if (is_valid_memory_access(file_name) == false) {
     if (open_file != NULL) {
       struct fd_info * fd_information = malloc(sizeof(struct fd_info));
       fd_information->file = open_file;
+      fd_information->file_name = file_name;
       int fd;
       int i;
       for (i = 2; i < 18; i++) {

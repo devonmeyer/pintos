@@ -35,6 +35,7 @@ typedef int tid_t;
       void *start_addr;
       //bool slot_is_empty;
       struct file *file;
+      char *file_name;
       // size, name, begin addr, offset, etc. look at wherever the FD is stored later
     };
 
