@@ -37,7 +37,6 @@ static int mem_map(int * arguments);
 static void mem_unmap ( int * arguments );
 static int system_exec (int * arguments);
 
-static struct lock file_sys_lock;
 bool debug_mode;
 
 #define WRITE_CHUNK_SIZE 300
@@ -626,6 +625,7 @@ mem_map ( int * arguments ){
   for (i = 0; i < 16; i++) {
     if (list_empty(&t->mmap_table[i])) {
       mapid = i;
+      break;
     }
   }
 
