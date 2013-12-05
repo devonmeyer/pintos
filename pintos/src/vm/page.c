@@ -79,7 +79,7 @@ mmap_spt(void *page_num, struct file *f, int file_offset, mapid_t mapid) {
   spte->file_offset = file_offset;
 
   add_entry_mmapt(mapid, spte);
-
+  file_reopen(spte->file); // Need to increment the reference count to the file so that it persists through a file_close
 	hash_insert (&thread_current()->sup_page_table, &spte->hash_elem);
 }
 
