@@ -252,13 +252,16 @@ process_wait (tid_t child_tid UNUSED)
     //printf ("child pid is not valid - returning -1\n");
     return -1;
   }
+
   if (cp->wait_called){
     //printf ("wait has already been called on child - returning -1\n");
     return -1;
   }
+  cp->wait_called = true;
   while (!cp->has_exited){
     barrier();
   }
+//    cp->wait_called = false;
   //printf("Process has exited. returning status of %d\n", cp->exit_status);
   return cp->exit_status;
 }
